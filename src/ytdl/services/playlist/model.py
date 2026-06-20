@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from ytdl.constants import (
     EFFECT_FADE,
     LEADING_NONE,
+    MEMBER_VIDEO,
     MIX_AUDIO,
     MIX_STREAMS,
     MIX_SUBTITLE,
@@ -20,6 +21,7 @@ from ytdl.constants import (
     OUTPUT_MODES,
     OUTPUT_SAVE,
     OUTPUT_STREAM,
+    TRANSITION_RANDOM,
 )
 
 
@@ -35,6 +37,11 @@ class Member:
     resolution: str = "max"
     subtitle: str | bool | None = None
     effect: str = EFFECT_FADE
+    kind: str = MEMBER_VIDEO
+    at: float | None = None
+    until: float | None = None
+    transition: str = TRANSITION_RANDOM
+    direction: str = ""
 
 
 @dataclass(frozen=True)

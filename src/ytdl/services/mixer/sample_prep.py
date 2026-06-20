@@ -15,8 +15,10 @@ import subprocess
 from collections.abc import Callable
 from typing import Any
 
+from ytdl.constants import MEMBER_IMAGE
 from ytdl.infra.ffmpeg import FfmpegLocator
 from ytdl.infra.playback.duration import probe_media
+from ytdl.infra.playback.transitions import image_vfilter, resolve
 from ytdl.services.mixer.segment import MixSegment
 
 _LOGGER = logging.getLogger("ytdl.sample_prep")
@@ -58,6 +60,8 @@ class SamplePrep:
         self, segment: MixSegment, out_path: str, has_audio: bool
     ) -> list[str]:
         """Build the verified per-clip prep command (synthesize silence if needed)."""
+        if segment.kind == MEMBER_IMAGE:
+            return self._image_command(segment, out_path)
         play = segment.play_seconds or 0
         # ``-nostdin``: never read the inherited console — otherwise ffmpeg blocks
         # forever waiting on stdin and the whole sample run appears to hang.
@@ -79,6 +83,27 @@ class SamplePrep:
         ]
         return cmd
 
+    def _image_command(self, segment: MixSegment, out_path: str) -> list[str]:
+        """Prep a still image: loop it, animate via the transition, add silent audio.
+
+        Reuses the silent-audio (``anullsrc``) pattern so an image becomes a uniform
+        ``.ts`` like any clip; the per-image animation comes from
+        :mod:`ytdl.infra.playback.transitions` (``random`` by default).
+        """
+        play = segment.play_seconds or 0
+        transition = resolve(segment.transition, segment.direction)
+        vfilter = image_vfilter(transition, play, (self._width, self._height), self._fps)
+        return [
+            self._ffmpeg.exe(), "-nostdin", "-y",
+            "-loop", "1", "-t", str(play), "-i", segment.path,
+            "-f", "lavfi", "-t", str(play), "-i", "anullsrc=r=48000:cl=stereo",
+            "-map", "0:v:0", "-map", "1:a:0",
+            "-vf", vfilter,
+            "-c:v", "libx264", "-preset", self._preset,
+            "-c:a", self._audio_codec,
+            "-f", "mpegts", str(out_path),
+        ]
+
     def prepare(self, segment: MixSegment, out_path: str) -> bool:
         """Prep ``segment`` to ``out_path``; return ``True`` on success, else skip.
 
@@ -87,8 +112,11 @@ class SamplePrep:
         reported as ``False`` so the caller simply skips that clip.
         """
         try:
-            _duration, has_audio = self._probe_fn(segment.path, self._ffmpeg.exe())
-            command = self.build_command(segment, out_path, has_audio)
+            if segment.kind == MEMBER_IMAGE:
+                command = self.build_command(segment, out_path, has_audio=False)
+            else:
+                _duration, has_audio = self._probe_fn(segment.path, self._ffmpeg.exe())
+                command = self.build_command(segment, out_path, has_audio)
             code = self._run(command)
         except (OSError, subprocess.SubprocessError) as exc:
             _LOGGER.error("prep failed for %s: %s", segment.path, exc)

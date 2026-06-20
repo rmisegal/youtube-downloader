@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
+from ytdl.constants import MEMBER_IMAGE
 from ytdl.services.mixer.segment import MixSegment
 from ytdl.services.playlist.model import Member, Playlist
 from ytdl.shared.errors import PlaylistError
@@ -91,13 +92,25 @@ def _guard_removable(path: Path) -> None:
 
 
 def _to_segment(member: Member, resolved: str) -> MixSegment:
-    """Map a resolved member onto a :class:`MixSegment`."""
+    """Map a resolved member onto a :class:`MixSegment`.
+
+    For an image the on-screen duration comes from ``until - at`` (falling back to
+    ``play_time``); video keeps its source in-point (``start``) + ``play_time``.
+    """
+    play = member.play_time
+    if member.kind == MEMBER_IMAGE and member.at is not None and member.until is not None:
+        play = max(0.0, member.until - member.at)
     return MixSegment(
         path=resolved,
         start=member.start_time,
-        play_seconds=member.play_time,
+        play_seconds=play,
         speed=member.playback_speed,
         resolution=member.resolution,
         subtitle=member.subtitle,
         effect=member.effect,
+        kind=member.kind,
+        transition=member.transition,
+        direction=member.direction,
+        at=member.at,
+        until=member.until,
     )

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ytdl.constants import EFFECT_FADE
+from ytdl.constants import EFFECT_FADE, MEMBER_VIDEO, TRANSITION_RANDOM
 
 
 @dataclass(frozen=True)
@@ -26,6 +26,12 @@ class MixSegment:
         resolution: ``"max"`` or a ``"WxH"`` / height string.
         subtitle: ``None``/``False`` = off, ``True`` = embedded, ``"<file>"`` = insert.
         effect: Transition / mix effect name (defaults to ``"fade"``).
+        kind: ``"video"`` (default) or ``"image"`` — an image is looped + animated.
+        transition: per-image animation name or ``"random"`` (default) — see
+            :mod:`ytdl.infra.playback.transitions`. Ignored for video.
+        direction: optional pan/move direction (``left|right|up|down``) for images.
+        at: absolute timeline start (seconds) for timeline placement; ``None`` = sequential.
+        until: absolute timeline end (seconds) for images; image duration = ``until - at``.
     """
 
     path: str
@@ -35,3 +41,8 @@ class MixSegment:
     resolution: str = "max"
     subtitle: str | bool | None = None
     effect: str = EFFECT_FADE
+    kind: str = MEMBER_VIDEO
+    transition: str = TRANSITION_RANDOM
+    direction: str = ""
+    at: float | None = None
+    until: float | None = None

@@ -25,7 +25,7 @@ from ytdl.services.playlist.model import (
 from ytdl.shared.errors import PlaylistError
 
 # R55: schema versions this loader understands (PRD-playlist §5.2 ``version``).
-SUPPORTED_PLAYLIST_VERSIONS: frozenset[str] = frozenset({"1.03"})
+SUPPORTED_PLAYLIST_VERSIONS: frozenset[str] = frozenset({"1.03", "1.04"})
 
 __all__ = ["SUPPORTED_PLAYLIST_VERSIONS", "build_segments", "load_playlist"]
 
@@ -114,6 +114,11 @@ def _build_member(item: Any) -> Member:
         resolution=str(item.get("resolution", "max")),
         subtitle=item.get("subtitle"),
         effect=str(item.get("effect", "fade")),
+        kind=str(item.get("type", "video")),
+        at=_opt_float(item.get("at")),
+        until=_opt_float(item.get("until")),
+        transition=str(item.get("transition", "random")),
+        direction=str(item.get("direction", "")),
     )
 
 

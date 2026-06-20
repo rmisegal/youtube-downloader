@@ -51,6 +51,33 @@ PP_CONVERT_SUBS: str = "FFmpegSubtitlesConvertor"
 # string identifiers belong here.
 # Transition / mix effect names.
 EFFECT_FADE: str = "fade"
+# Playlist member kinds (metadata member ``type``).
+MEMBER_VIDEO: str = "video"
+MEMBER_IMAGE: str = "image"
+MEMBER_KINDS: tuple[str, ...] = (MEMBER_VIDEO, MEMBER_IMAGE)
+# Still-image source formats indexed for the mixer/playlist.
+SUPPORTED_IMAGE_FORMATS: tuple[str, ...] = (
+    ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif",
+)
+# Per-image transition/animation names (FFmpeg zoompan + fade); ``random`` picks one.
+TRANSITION_RANDOM: str = "random"
+TRANSITION_FADE: str = "fade"
+TRANSITION_ZOOMIN: str = "zoomin"
+TRANSITION_ZOOMOUT: str = "zoomout"
+TRANSITION_PANLEFT: str = "panleft"
+TRANSITION_PANRIGHT: str = "panright"
+TRANSITION_PANUP: str = "panup"
+TRANSITION_PANDOWN: str = "pandown"
+# Concrete transitions ``random`` may resolve to (excludes ``random`` itself).
+IMAGE_TRANSITIONS: tuple[str, ...] = (
+    TRANSITION_FADE,
+    TRANSITION_ZOOMIN,
+    TRANSITION_ZOOMOUT,
+    TRANSITION_PANLEFT,
+    TRANSITION_PANRIGHT,
+    TRANSITION_PANUP,
+    TRANSITION_PANDOWN,
+)
 # Playlist output-mode names (metadata.output toggles).
 OUTPUT_DISPLAY: str = "display"
 OUTPUT_SAVE: str = "save"

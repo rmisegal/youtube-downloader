@@ -56,6 +56,28 @@ def test_command_normalizes_to_720p_h264_mpegts() -> None:
     assert cmd[-3:] == ["-f", "mpegts", "out.ts"]
 
 
+def test_image_command_loops_image_and_animates_with_silent_audio() -> None:
+    prep = _prep(lambda *_a: (0.0, False))
+    seg = MixSegment("cover.jpg", play_seconds=6.0, kind="image", transition="zoomin")
+    cmd = prep.build_command(seg, "out.ts", has_audio=False)
+    joined = " ".join(cmd)
+    assert "-loop" in cmd and cmd[cmd.index("-loop") + 1] == "1"
+    assert "-ss" not in cmd  # images are not seeked
+    assert "anullsrc=r=48000:cl=stereo" in joined  # synthesized silent audio
+    assert "zoompan=" in joined  # the per-image animation
+    assert cmd[-3:] == ["-f", "mpegts", "out.ts"]
+
+
+def test_prepare_image_skips_probe(monkeypatch) -> None:
+    monkeypatch.setattr("ytdl.services.mixer.sample_prep.os.path.exists", lambda _p: True)
+    probe = MagicMock(side_effect=AssertionError("must not probe an image"))
+    runner = MagicMock(return_value=SimpleNamespace(returncode=0))
+    prep = _prep(probe, runner=runner)
+    seg = MixSegment("pic.png", play_seconds=5.0, kind="image", transition="fade")
+    assert prep.prepare(seg, "out.ts") is True
+    probe.assert_not_called()
+
+
 def test_prepare_returns_true_on_success(monkeypatch) -> None:
     monkeypatch.setattr("ytdl.services.mixer.sample_prep.os.path.exists", lambda _p: True)
     runner = MagicMock(return_value=SimpleNamespace(returncode=0))
