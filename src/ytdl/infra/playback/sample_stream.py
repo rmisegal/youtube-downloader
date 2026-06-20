@@ -25,12 +25,21 @@ from ytdl.services.mixer.segment import MixSegment
 def _prepare_all(
     segments: list[MixSegment], sample_prep: SamplePrep, tmp_dir: str
 ) -> list[MixSegment]:
-    """Prep each segment sequentially; return the prepared (succeeded) clips."""
+    """Prep each segment sequentially; return the prepared (succeeded) clips.
+
+    Prints a keep-alive line per clip so a long prep never looks frozen.
+    """
     prepared: list[MixSegment] = []
+    total = len(segments)
     for index, seg in enumerate(segments):
+        name = Path(seg.path).name
+        print(f"[sample] preparing {index + 1}/{total}: {name}", flush=True)
         out_path = str(Path(tmp_dir) / f"{index:02d}.ts")
         if sample_prep.prepare(seg, out_path):
             prepared.append(MixSegment(path=out_path, start=0.0, play_seconds=seg.play_seconds))
+        else:
+            print(f"[sample] skipped (prep failed): {name}", flush=True)
+    print(f"[sample] {len(prepared)}/{total} clips ready — launching VLC…", flush=True)
     return prepared
 
 
@@ -67,7 +76,9 @@ def stream_samples(
             prepared, "pipe:1", crossfade=crossfade, container="mpegts"
         )
         with _log_handle(log_path) as log:
-            ffmpeg = runner(command, stdout=subprocess.PIPE, stderr=log)
+            ffmpeg = runner(
+                command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=log
+            )
             vlc = runner(
                 [vlc_binary or DEFAULT_VLC_BINARY, "-"],
                 stdin=ffmpeg.stdout,

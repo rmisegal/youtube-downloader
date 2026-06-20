@@ -64,6 +64,7 @@ class StreamServer:
         filter_complex = build_filter_complex(crossfade, offset)
         return [
             self._ffmpeg.exe(),
+            "-nostdin",
             "-y",
             "-i",
             source,
@@ -102,7 +103,7 @@ class StreamServer:
             source_mix_time=source_mix_time,
             target_start_time=target_start_time,
         )
-        ffmpeg_proc = self._runner(command, stdout=subprocess.PIPE)
+        ffmpeg_proc = self._runner(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
         vlc_cmd = [vlc_binary or DEFAULT_VLC_BINARY, "-"]
         vlc_proc = self._runner(vlc_cmd, stdin=ffmpeg_proc.stdout)
         return ffmpeg_proc, vlc_proc

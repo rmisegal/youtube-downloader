@@ -43,6 +43,8 @@ class SamplePrep:
         self._fps = get("render.fps", 30)
         self._preset = get("render.video_preset", "ultrafast")
         self._audio_codec = get("render.audio_codec", "aac")
+        # Per-clip safety cap so one pathological file can never hang the run.
+        self._timeout = get("render.prep_timeout_seconds", 120)
 
     def _vfilter(self) -> str:
         """The verified scale/pad/sar/fps/format chain to the common canvas."""
@@ -57,7 +59,12 @@ class SamplePrep:
     ) -> list[str]:
         """Build the verified per-clip prep command (synthesize silence if needed)."""
         play = segment.play_seconds or 0
-        cmd = [self._ffmpeg.exe(), "-y", "-ss", str(segment.start), "-t", str(play), "-i", segment.path]
+        # ``-nostdin``: never read the inherited console — otherwise ffmpeg blocks
+        # forever waiting on stdin and the whole sample run appears to hang.
+        cmd = [
+            self._ffmpeg.exe(), "-nostdin", "-y",
+            "-ss", str(segment.start), "-t", str(play), "-i", segment.path,
+        ]
         if has_audio:
             audio_map = "0:a:0"
         else:
@@ -92,10 +99,23 @@ class SamplePrep:
         return False
 
     def _run(self, command: list[str]) -> int:
-        """Run ``command``, routing stderr to the log file (append) or DEVNULL."""
-        if self._log_path:
-            with open(self._log_path, "a", encoding="utf-8") as handle:
-                result = self._runner(command, stderr=handle)
-        else:
-            result = self._runner(command, stderr=subprocess.DEVNULL)
+        """Run ``command`` with stdin detached + a timeout; stderr to log/DEVNULL.
+
+        ``stdin=DEVNULL`` is the load-bearing fix: ffmpeg with an inherited console
+        stdin blocks indefinitely. The ``timeout`` is a belt-and-suspenders cap.
+        """
+        try:
+            if self._log_path:
+                with open(self._log_path, "a", encoding="utf-8") as handle:
+                    result = self._runner(
+                        command, stdin=subprocess.DEVNULL, stderr=handle, timeout=self._timeout
+                    )
+            else:
+                result = self._runner(
+                    command, stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    timeout=self._timeout,
+                )
+        except subprocess.TimeoutExpired:
+            _LOGGER.error("prep timed out after %ss: %s", self._timeout, command[-1])
+            return 124
         return getattr(result, "returncode", 0)

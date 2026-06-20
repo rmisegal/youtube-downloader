@@ -94,6 +94,7 @@ class MixRenderer:
         graph = ";".join(vsteps + asteps)
         return [
             self._ffmpeg.exe(),
+            "-nostdin",
             "-y",
             *self._inputs(segments, durations),
             "-filter_complex",
@@ -139,7 +140,7 @@ class MixRenderer:
             command = self.build_command(segments, output_path, crossfade=crossfade)
         if self._log_path:
             with open(self._log_path, "a", encoding="utf-8") as handle:
-                self._runner(command, stderr=handle)
+                self._runner(command, stdin=subprocess.DEVNULL, stderr=handle)
         else:
-            self._runner(command, stderr=subprocess.DEVNULL)
+            self._runner(command, stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return output_path

@@ -31,7 +31,7 @@ def test_command_uses_source_audio_when_present() -> None:
     assert "anullsrc" not in " ".join(cmd)
     assert "0:a:0" in cmd
     assert "1:a:0" not in cmd
-    assert cmd[:7] == ["/fake/ffmpeg", "-y", "-ss", "5.0", "-t", "10.0", "-i"]
+    assert cmd[:8] == ["/fake/ffmpeg", "-nostdin", "-y", "-ss", "5.0", "-t", "10.0", "-i"]
 
 
 def test_command_synthesizes_silence_when_no_audio() -> None:
@@ -84,3 +84,25 @@ def test_prepare_swallows_subprocess_errors() -> None:
 
     prep = _prep(lambda *_a: (10.0, True), runner=boom)
     assert prep.prepare(MixSegment("a.mp4", play_seconds=5.0), "out.ts") is False
+
+
+def test_prepare_skips_on_timeout() -> None:
+    import subprocess
+
+    def slow(*_a, **_k):
+        raise subprocess.TimeoutExpired(cmd="ffmpeg", timeout=1)
+
+    prep = _prep(lambda *_a: (10.0, True), runner=slow)
+    assert prep.prepare(MixSegment("a.mp4", play_seconds=5.0), "out.ts") is False
+
+
+def test_run_detaches_stdin_and_passes_timeout() -> None:
+    import subprocess
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    runner = MagicMock(return_value=SimpleNamespace(returncode=0))
+    prep = _prep(lambda *_a: (10.0, True), runner=runner)
+    prep._run(["/fake/ffmpeg", "-i", "a.mp4"])
+    assert runner.call_args.kwargs["stdin"] is subprocess.DEVNULL
+    assert "timeout" in runner.call_args.kwargs
