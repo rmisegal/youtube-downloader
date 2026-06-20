@@ -99,6 +99,24 @@ def test_display_option1_uses_vlc_binary() -> None:
     m["opt1"].run_segments.assert_called_once()
 
 
+def test_display_leading_audio_renders_one_file_via_option1() -> None:
+    # Leading track + default mode option2: must STILL render ONE file via
+    # option1.run_segments (the matrix can't apply a separate leading soundtrack).
+    pl = _playlist(
+        output=Output(display=True),
+        loop=False,
+        leading=Leading(kind="audio", file="C:/song.mp4"),
+        mix=MixToggles(video=True, audio=False),
+    )
+    _run, _result, m = _runner(pl, mode="option2")
+    m["opt2"].play_segments.assert_not_called()
+    m["opt1"].run_segments.assert_called_once()
+    kw = m["opt1"].run_segments.call_args.kwargs
+    assert kw["leading_kind"] == "audio"
+    assert kw["leading_path"] == "C:/song.mp4"
+    assert kw["vlc_binary"] is m["vlc"].vlc_binary.return_value
+
+
 def test_display_loops_while_loop_true_bounded() -> None:
     pl = _playlist(output=Output(display=True), loop=True)
     _run, _result, m = _runner(pl, should_continue=lambda i: i < 3)

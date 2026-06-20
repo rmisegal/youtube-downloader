@@ -122,9 +122,14 @@ def test_leading_video_drops_leading_audio_members_supply_audio() -> None:
 def test_leading_audio_discards_picture_keeps_audio() -> None:
     cmd = _renderer().build_leading_command(_segs(2), "song.mp3", "audio", "out.mp4", crossfade=1)
     assert "-vn" in cmd
-    assert "0:a" in cmd
+    # Leading audio is looped to cover the video and mapped via the fade chain.
+    assert "-stream_loop" in cmd and cmd[cmd.index("-stream_loop") + 1] == "-1"
+    assert "[aout]" in cmd  # audio mapped through the trim/fade filter, not raw 0:a
     graph = cmd[cmd.index("-filter_complex") + 1]
     assert "xfade=" in graph  # members supply the video mix
+    # The leading audio is trimmed to the video length and dimmed out at the end.
+    assert "atrim=0:" in graph
+    assert "afade=t=out" in graph
 
 
 def test_leading_member_inputs_shifted_by_one() -> None:

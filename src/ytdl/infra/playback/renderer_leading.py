@@ -35,11 +35,34 @@ def leading_command(
         graph = ";".join(asteps)  # leading picture kept as-is; only audio mixed
         lead_in = ["-an", "-i", leading_path]
         return _assemble(renderer, lead_in, segments, durations, graph, "0:v", f"[{alabel}]", output_path)
-    # leading_kind == "audio": discard the leading picture, keep its audio.
+    # leading_kind == "audio": members' picture is xfaded; the leading track is the
+    # soundtrack. The audio is LOOPED to cover the video and TRIMMED to the exact
+    # video length with a fade-out (dim) at the end — so it never plays over a black
+    # tail (song longer than video) and a short song still fills the mix (PRD-playlist §6).
     vsteps, vlabel = _shifted(renderer, build_video_graph, segments, durations, crossfade)
-    graph = ";".join(vsteps)
-    lead_in = ["-vn", "-i", leading_path]
-    return _assemble(renderer, lead_in, segments, durations, graph, f"[{vlabel}]", "0:a", output_path)
+    total = _video_total(durations, crossfade)
+    fade_start = max(0.0, total - crossfade)
+    aud = (
+        f"[0:a]atrim=0:{_fmt(total)},"
+        f"afade=t=out:st={_fmt(fade_start)}:d={_fmt(crossfade)}[aout]"
+    )
+    graph = ";".join([*vsteps, aud])
+    lead_in = ["-stream_loop", "-1", "-vn", "-i", leading_path]
+    return _assemble(
+        renderer, lead_in, segments, durations, graph, f"[{vlabel}]", "[aout]", output_path
+    )
+
+
+def _fmt(value: float) -> str:
+    """Format a time compactly (no trailing ``.0``)."""
+    return str(int(value)) if float(value).is_integer() else f"{value:.3f}"
+
+
+def _video_total(durations: Sequence[float], crossfade: float) -> float:
+    """Total xfade-mix duration: clips overlap by ``crossfade`` at each join."""
+    if not durations:
+        return 0.0
+    return max(0.0, sum(durations) - crossfade * (len(durations) - 1))
 
 
 def _shifted(renderer, builder, segments, durations, crossfade):  # type: ignore[no-untyped-def]

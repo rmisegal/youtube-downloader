@@ -103,16 +103,34 @@ class PlaylistRunner:
     def _display(self, meta: Any, segments: list[Any]) -> None:
         """Play the mix live, looping while ``loop`` (bounded by ``should_continue``)."""
         mode = self._config.get(*_DEFAULT_MODE)
+        leading_kind = meta.leading_kind()
+        leading_file = meta.leading_file()
         iteration = 0
         while True:
-            self._play_once(mode, segments)
+            self._play_once(mode, segments, leading_kind, leading_file)
             iteration += 1
             if not meta.loop or not self._should_continue(iteration):
                 break
 
-    def _play_once(self, mode: str, segments: list[Any]) -> None:
-        """Verify the VLC dep for ``mode`` and play the segments once."""
-        if mode == PLAYBACK_OPTION1:
+    def _play_once(
+        self, mode: str, segments: list[Any], leading_kind: str, leading_file: str
+    ) -> None:
+        """Verify the VLC dep and play the segments once.
+
+        A leading track (audio/video) ALWAYS renders ONE mix file and opens it in
+        ONE VLC — the same render-to-file path as ``--sample-play`` — because the
+        Option-2 per-clip matrix cannot apply a separate leading soundtrack.
+        """
+        if leading_kind in (LEADING_AUDIO, LEADING_VIDEO) and leading_file:
+            vlc = self._vlc.vlc_binary()
+            self._option1.run_segments(
+                segments,
+                crossfade=self._crossfade,
+                vlc_binary=vlc,
+                leading_path=leading_file,
+                leading_kind=leading_kind,
+            )
+        elif mode == PLAYBACK_OPTION1:
             vlc = self._vlc.vlc_binary()
             self._option1.run_segments(
                 segments, crossfade=self._crossfade, vlc_binary=vlc

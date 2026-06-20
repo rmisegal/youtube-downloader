@@ -57,6 +57,28 @@ def test_run_segments_preps_each_clip_then_renders_file_and_opens_vlc() -> None:
     assert runner.return_value.wait.call_count == 2
 
 
+def test_run_segments_leading_audio_uses_leading_command() -> None:
+    renderer = MagicMock()
+    renderer.build_leading_command.return_value = ["ffmpeg", "lead", "mix.mp4"]
+    runner = MagicMock()
+    prep = _sample_prep([True, True])
+    engine = Option1Engine(
+        ffmpeg=_ffmpeg(), renderer=renderer, runner=runner, sample_prep=prep
+    )
+    segs = [MixSegment("a.mp4", play_seconds=5.0), MixSegment("b.mp4", play_seconds=5.0)]
+    engine.run_segments(
+        segs, crossfade=2, vlc_binary="/usr/bin/vlc",
+        leading_path="song.mp4", leading_kind="audio",
+    )
+    # Leading => the leading renderer is used; the plain build_command is NOT.
+    renderer.build_leading_command.assert_called_once()
+    renderer.build_command.assert_not_called()
+    args = renderer.build_leading_command.call_args.args  # (prepared, path, kind, out)
+    assert args[1] == "song.mp4"
+    assert args[2] == "audio"
+    assert args[3].endswith("mix.mp4")
+
+
 def test_run_segments_skips_failed_preps() -> None:
     renderer = MagicMock()
     renderer.build_command.return_value = ["ffmpeg"]

@@ -65,6 +65,8 @@ def stream_samples(
     runner: Callable[..., Any],
     vlc_binary: str | None = None,
     log_path: str | None = None,
+    leading_path: str | None = None,
+    leading_kind: str = "none",
 ) -> None:
     """Prep clips to small ``.ts``, render ONE mix FILE, then open it in VLC.
 
@@ -80,7 +82,14 @@ def stream_samples(
             print("[sample] not enough playable clips — nothing to show.", flush=True)
             return
         out_file = str(Path(tmp_dir) / "mix.mp4")
-        command = renderer.build_command(prepared, out_file, crossfade=crossfade)
+        if leading_path and leading_kind in ("video", "audio"):
+            # Members supply the picture; the leading track supplies the soundtrack
+            # (audio) or the master picture (video). Same render-to-file→VLC flow.
+            command = renderer.build_leading_command(
+                prepared, leading_path, leading_kind, out_file, crossfade=crossfade
+            )
+        else:
+            command = renderer.build_command(prepared, out_file, crossfade=crossfade)
         print("[sample] rendering the mix…", flush=True)
         with _log_handle(log_path) as log:
             runner(command, stdin=subprocess.DEVNULL, stdout=log, stderr=log).wait()

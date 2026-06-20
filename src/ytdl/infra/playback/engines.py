@@ -77,12 +77,16 @@ class Option1Engine:
         *,
         crossfade: float,
         vlc_binary: str | None = None,
+        leading_path: str | None = None,
+        leading_kind: str = "none",
     ) -> None:
         """Prep each clip's sample to a small ``.ts`` ONE AT A TIME, then stitch.
 
         Each clip is normalized to a small 720p ``.ts`` sequentially (synthesizing
         silent audio when it has none, SKIPPING any clip whose prep fails); the
-        small uniform clips are then xfade-stitched into ONE ``vlc -`` window.
+        small uniform clips are xfade-stitched into ONE mix file opened in ONE VLC.
+        With ``leading_kind`` (``audio``/``video``) the leading track supplies the
+        soundtrack/master picture — same flow, shared with ``--sample-play``.
         See :func:`ytdl.infra.playback.sample_stream.stream_samples`.
         """
         stream_samples(
@@ -93,4 +97,6 @@ class Option1Engine:
             runner=self._runner,
             vlc_binary=vlc_binary,
             log_path=self._log_path,
+            leading_path=leading_path,
+            leading_kind=leading_kind,
         )
