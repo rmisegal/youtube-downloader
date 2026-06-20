@@ -12,10 +12,14 @@ from typing import Any
 
 from ytdl.infra.jsruntime import detect_runtime
 from ytdl.infra.playback.engines import Option1Engine, Option2Engine
+from ytdl.infra.playback.renderer import MixRenderer
 from ytdl.infra.playback.vlc_locator import VlcLocator
 from ytdl.infra.ytdlp_client import YtDlpClient
 from ytdl.services.mixer.mixer_service import MixerService
 from ytdl.services.mixer.playlist_engine import PlaylistEngine
+from ytdl.services.mixer.sample_runner import SampleRunner
+from ytdl.services.mixer.sampler import Sampler
+from ytdl.services.playlist.runner import PlaylistRunner
 from ytdl.shared.config import ConfigManager
 from ytdl.shared.gatekeeper import ApiGatekeeper
 from ytdl.shared.queue import DownloadQueue
@@ -80,5 +84,36 @@ def build_mixer(config: ConfigManager, downloader: Any) -> MixerService:
         vlc_locator=VlcLocator(),
         stream_server=Option1Engine(),
         matrix=Option2Engine(),
+        downloader=downloader,
+    )
+
+
+def build_sampler(config: ConfigManager) -> Sampler:
+    """Build the ``--sample-play`` segment builder from config (Rule 1 wiring)."""
+    return Sampler(config)
+
+
+def build_sample_runner(config: ConfigManager) -> SampleRunner:
+    """Assemble the ``--sample-play`` orchestrator (Sampler + VLC + both engines)."""
+    return SampleRunner(
+        config,
+        sampler=build_sampler(config),
+        vlc_locator=VlcLocator(),
+        option1=Option1Engine(),
+        option2=Option2Engine(),
+    )
+
+
+def build_playlist_runner(config: ConfigManager, downloader: Any) -> PlaylistRunner:
+    """Assemble the YAML-playlist orchestrator (VLC + both engines + renderer).
+
+    ``downloader`` is the SDK itself, used for rate-limited URL member downloads.
+    """
+    return PlaylistRunner(
+        config,
+        vlc_locator=VlcLocator(),
+        option1=Option1Engine(),
+        option2=Option2Engine(),
+        renderer=MixRenderer(config=config),
         downloader=downloader,
     )

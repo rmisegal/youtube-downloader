@@ -14,7 +14,13 @@ from typing import Any
 from ytdl.constants import MODE_AUDIO, MODE_SUBS, MODE_VIDEO
 from ytdl.infra.ytdlp_client import YtDlpClient
 from ytdl.sdk.compose import compose_opts
-from ytdl.sdk.wiring import build_client, build_extra_opts, build_mixer
+from ytdl.sdk.wiring import (
+    build_client,
+    build_extra_opts,
+    build_mixer,
+    build_playlist_runner,
+    build_sample_runner,
+)
 from ytdl.services.audio import AudioDownloader
 from ytdl.services.base import BaseDownloader
 from ytdl.services.metadata import MetadataService
@@ -145,6 +151,31 @@ class YoutubeDownloaderSDK:
             source_mix_time=source_mix_time,
             target_start_time=target_start_time,
         )
+
+    def sample_play(
+        self,
+        directory: str,
+        *,
+        play_for_sec: float | None = None,
+        mode: str | None = None,
+    ) -> dict[str, Any]:
+        """Preview a folder by crossfading random mid-band samples (PRD-playlist §3).
+
+        Builds segments via the :class:`Sampler`, checks the VLC dependency for the
+        chosen ``mode`` (config ``playback.default_mode``, default option2), plays
+        them, and loops while ``sample.loop``. Returns ``{mode, track_count, loop}``.
+        """
+        runner = build_sample_runner(self._config)
+        return runner.run(directory, play_for_sec=play_for_sec, mode=mode)
+
+    def play_playlist(self, yaml_path: str) -> dict[str, Any]:
+        """Run a declarative YAML playlist (display/save/stream) (PRD-playlist §5).
+
+        Delegates to a :class:`PlaylistRunner`; the SDK is passed as the
+        rate-limited downloader for URL members. Returns the runner's report dict.
+        """
+        runner = build_playlist_runner(self._config, downloader=self)
+        return runner.run(yaml_path)
 
     def download_video(self, url: str, **kwargs: Any) -> dict[str, Any]:
         """Convenience: download video only (delegates to :meth:`download`)."""
