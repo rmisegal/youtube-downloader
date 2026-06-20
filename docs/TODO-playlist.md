@@ -3,8 +3,9 @@
 **Plan source:** `docs/PLAN-playlist.md`
 **Generated:** 2026-06-20
 **Minimum tasks contract:** >= 200
-**Total atomic tasks:** 205
-**Coverage:** 54/54 PRD demands + 14/14 rules + all gates/sign-off (100%)
+**Total atomic tasks:** 210
+**Coverage:** 56/56 PRD demands + 14/14 rules + all gates/sign-off (100%)
+**Audit:** `/new:todo-vs-prd` 2026-06-20 — gaps GA.6 (playlist version validation R55, member existence/drive-guard R56) closed; PLAN back-propagated to v1.01.
 
 ## Conventions
 - `[ ]` = open, `[x]` = done. Every task ends with citations: `(Plan §x)`, `(Plan Phase n.m)`, `(Plan Gate n)`, `(Rule #k)`, `(Rxx)`, `(Sx)`.
@@ -131,6 +132,11 @@
 - [ ] GREEN: implement `services/playlist/model.py` (Playlist/Metadata/Output/Mix/Leading/Member) (Plan Phase 5.2, R36, Rule #8)
 - [ ] RED: test loader parses valid YAML → model (Plan Phase 5.3, R12, Rule #7)
 - [ ] RED: test loader malformed/invalid YAML → `PlaylistError` (Plan Phase 5.3, R12, Rule #7)
+- [ ] RED: test loader rejects unsupported playlist `version` field → `PlaylistError`/exit 8 (Plan Phase 5.3, R55, PRD §5.2/§5.3, Rule #7)
+- [ ] GREEN: implement playlist `version` validation against supported set (Plan Phase 5.3, R55, PRD §5.3)
+- [ ] RED: test loader missing member file → `PlaylistError`/exit 2 (Plan Phase 5.3, R56, PRD §5.3, Rule #7)
+- [ ] RED: test loader applies removable-drive (`D:`/`H:`) guard to member paths → clear error if unmounted (Plan Phase 5.3, R56, PRD §5.3, Rule #7)
+- [ ] GREEN: implement member file-existence + removable-drive guard in loader (Plan Phase 5.3, R56, PRD §5.3)
 - [ ] RED: test loader uses `yaml.safe_load` (no arbitrary objects) (Plan Phase 5.3, R12, Rule #13)
 - [ ] RED: test loader orders members by `id` (Plan Phase 5.3, R13, Rule #7)
 - [ ] RED: test loader resolves member `file` rel→`source_folder` (Plan Phase 5.3, R14, Rule #7)
@@ -318,6 +324,8 @@
 | R50–R52 (tests/gates) | Test | Phase 8 tasks | PASS |
 | R53 (compliance matrix) | Deliverable | Quality Rules Coverage below | PASS |
 | R54 (manual verification) | AC | Phase 11.2 tasks | PASS |
+| R55 (playlist version validation→exit 8) | Func | Phase 5.3 RED/GREEN | PASS |
+| R56 (member existence + drive guard→exit 2) | Func | Phase 5.3 RED×2/GREEN | PASS |
 | Sign-Off rows (4) | Sign-Off | Phase 11 sign-off tasks | PASS |
 
 ---
@@ -353,6 +361,9 @@ Self-review gaps found and patched in-place (GA.1–GA.4):
 - GA.5 — post-count recheck (197 < 200 floor): under-decomposed items split into atomic tasks — renderer
   subtitle insert/burn (R27, 2), member subtitle/defaults/YouTube-URL resolution (R15/R16/A1/R40, 4), playlist
   stream test (R22, 1), tag-verify (Plan 11.4, 1) → 205 total, clearing the floor without inventing work
+- GA.6 — (PRD audit `/new:todo-vs-prd`) Phase 5.3 missed two PRD §5.3 validations → added playlist `version`
+  validation (R55, exit 8) and member file-existence + `D:`/`H:` removable-drive guard (R56, exit 2); PLAN
+  back-propagated to v1.01 (5 tasks)
 
 **Verification:** Plan Coverage Map traces every Plan element → TODO line; Quality Rules Coverage proves 14/14; every phase ends with Gate + Commit; every GREEN is preceded by a RED in file order.
 
@@ -361,7 +372,7 @@ Self-review gaps found and patched in-place (GA.1–GA.4):
 ## Sign-Off
 | Check | Status | Evidence |
 |---|---|---|
-| >= 200 atomic tasks | PASS | task count = 205 |
+| >= 200 atomic tasks | PASS | task count = 210 |
 | 100% plan coverage | PASS | Plan Coverage Map |
 | All quality rules cited | PASS | Quality Rules Coverage (14/14) |
 | RED-before-GREEN ordering enforced | PASS | every GREEN preceded by RED |

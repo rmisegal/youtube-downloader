@@ -1,7 +1,7 @@
 # Implementation Plan — Sampler, Per-Clip Duration & YAML Playlist
 
 **PRD Source:** `docs/PRD-playlist.md`
-**Plan Version:** 1.00
+**Plan Version:** 1.01
 **Created:** 2026-06-20
 **Owner:** rmisegal@gmail.com
 **Execution Mode:** Interactive (executing agents may pause for clarification)
@@ -116,10 +116,14 @@ and config, and is built SDK-first under all 14 `/glb-quality-code-guidlines` ru
   config band), `play_seconds`/`--play-for-sec`, loop → `list[MixSegment]` (R3–R8). 5.2 `services/playlist/model.py`
   dataclasses (Playlist/Metadata/Output/Mix/Leading/Member) (R36). 5.3 `services/playlist/loader.py` YAML→model +
   validation → `PlaylistError`; order by `id`; resolve paths rel→`source_folder`; build `MixSegment`s (R12–R15).
+  Also **validate the playlist's `version` field** against supported values → `PlaylistError`/exit 8 (R55), and
+  **validate each member file exists** with the source-folder + **removable-drive (`D:`/`H:`) guard** →
+  `PlaylistError`/exit 2 (R56).
   5.4 mix toggles gate streams; leading-kind selection (video mutes leading audio; audio uses only sound even from a
   video file) (R16–R19, R30, R31). 5.5 `services/playlist/summary.py` compute total length/size/resolution/members;
   write back (R25).
-- **Gate:** [ ] Func: malformed YAML → `PlaylistError`; sampler deterministic under seeded RNG; toggles/leading honored;
+- **Gate:** [ ] Func: malformed YAML → `PlaylistError`; **unsupported playlist `version` → exit 8 (R55)**;
+  **missing member file / unmounted drive → exit 2 (R56)**; sampler deterministic under seeded RNG; toggles/leading honored;
   summary computed. [ ] Quality: reuse `selection`/`scan`, no dup (R2); files ≤150 (R8); ruff (R10); tests-first (R7).
   [ ] Automated: `uv run pytest tests/unit/services`.
 
@@ -260,8 +264,16 @@ streaming, leading-track master/mute/strip semantics, random-mid-band sampling) 
 | §13 (R52) | gates ruff0/coverage≥85/≤150/uv | Quality | 8 | 11 | 8.3 |
 | §11 (R53) | 14-rule compliance matrix | Deliverable | 10 | 11 | §10 |
 | §13 (R54) | manual verification (sample plays; save→file; display→VLC) | AC | 11 | — | 11.2 |
+| §5.2/§5.3 (R55) | validate playlist `version` field → exit 8 | Func | 5 | 7 | 5.3 |
+| §5.3 (R56) | validate member file exists + removable-drive guard → exit 2 | Func | 5 | 7 | 5.3 |
 
-**Coverage: 54/54 atomic demands mapped (100%).**
+**Coverage: 56/56 atomic demands mapped (100%).**
+
+> **Changelog**
+> - **1.01 (2026-06-20):** Audit back-propagation (`/new:todo-vs-prd`). Added R55 (validate playlist `version`
+>   field → exit 8) and R56 (validate member file existence + `D:`/`H:` removable-drive guard → exit 2) to
+>   Phase 5.3 + its gate + the coverage matrix.
+> - **1.00 (2026-06-20):** Initial plan from `docs/PRD-playlist.md`.
 
 ---
 
@@ -292,7 +304,7 @@ streaming, leading-track master/mute/strip semantics, random-mid-band sampling) 
 
 | Check | Status | Evidence |
 |-------|--------|----------|
-| 100% PRD coverage | PASS | §9 (54/54) |
+| 100% PRD coverage | PASS | §9 (56/56) |
 | 14/14 rules enforced | PASS | §10 |
 | No open questions | PASS | §8 (none) |
 | All phase gates defined | PASS | §5 (Phases 1–11) |
