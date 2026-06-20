@@ -99,6 +99,29 @@ def test_display_option1_uses_vlc_binary() -> None:
     m["opt1"].run_segments.assert_called_once()
 
 
+def test_display_timeline_routes_to_option1_with_timeline_flag() -> None:
+    # An image (or any member with an absolute `at`) => timeline render via option1,
+    # one VLC, NOT the per-clip option2 matrix.
+    pl = _playlist(output=Output(display=True), loop=False)
+    segs = [
+        MixSegment(path="cover.jpg", kind="image", at=0.0, play_seconds=8.0),
+        MixSegment(path="clip.mp4", at=8.0, play_seconds=10.0),
+    ]
+    _run, result, m = _runner(pl, mode="option2", segments=segs)
+    assert result["timeline"] is True
+    m["opt2"].play_segments.assert_not_called()
+    m["opt1"].run_segments.assert_called_once()
+    assert m["opt1"].run_segments.call_args.kwargs["timeline"] is True
+
+
+def test_save_skipped_for_timeline_playlist() -> None:
+    pl = _playlist(output=Output(display=False, save=True), loop=False)
+    segs = [MixSegment(path="cover.jpg", kind="image", at=0.0, play_seconds=5.0)]
+    _run, result, m = _runner(pl, segments=segs)
+    m["rend"].render.assert_not_called()  # save skipped for timeline (logged)
+    assert "saved_path" not in result
+
+
 def test_display_leading_audio_renders_one_file_via_option1() -> None:
     # Leading track + default mode option2: must STILL render ONE file via
     # option1.run_segments (the matrix can't apply a separate leading soundtrack).

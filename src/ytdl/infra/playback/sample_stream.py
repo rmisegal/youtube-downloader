@@ -16,8 +16,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from ytdl.constants import LEADING_AUDIO, LEADING_VIDEO
 from ytdl.infra.playback.renderer import MixRenderer
 from ytdl.infra.playback.stream_server import DEFAULT_VLC_BINARY
+from ytdl.infra.playback.timeline import build_timeline_command, timeline_total
 from ytdl.services.mixer.sample_prep import SamplePrep
 from ytdl.services.mixer.segment import MixSegment
 
@@ -36,7 +38,10 @@ def _prepare_all(
         print(f"[sample] preparing {index + 1}/{total}: {name}", flush=True)
         out_path = str(Path(tmp_dir) / f"{index:02d}.ts")
         if sample_prep.prepare(seg, out_path):
-            prepared.append(MixSegment(path=out_path, start=0.0, play_seconds=seg.play_seconds))
+            # Carry ``at`` so the timeline compositor can place the prepped clip.
+            prepared.append(
+                MixSegment(path=out_path, start=0.0, play_seconds=seg.play_seconds, at=seg.at)
+            )
         else:
             print(f"[sample] skipped (prep failed): {name}", flush=True)
     print(f"[sample] {len(prepared)}/{total} clips ready — launching VLC…", flush=True)
@@ -56,6 +61,42 @@ def _log_handle(log_path: str | None):  # type: ignore[no-untyped-def]
         yield subprocess.DEVNULL
 
 
+def _render_command(
+    renderer: MixRenderer,
+    prepared: list[MixSegment],
+    out_file: str,
+    *,
+    crossfade: float,
+    leading_path: str | None,
+    leading_kind: str,
+    timeline: bool,
+    tmp_dir: str,
+) -> list[str]:
+    """Pick the render command: absolute-timeline overlay, leading-track, or xfade."""
+    if timeline:
+        total = timeline_total(prepared)
+        lead = leading_path
+        if leading_path and leading_kind == LEADING_AUDIO:
+            lead = renderer.looped_leading(leading_path, total, crossfade, tmp_dir)
+        return build_timeline_command(
+            renderer, prepared, total=total, leading_path=lead,
+            leading_kind=leading_kind, crossfade=crossfade, output_path=out_file,
+        )
+    if leading_path and leading_kind in (LEADING_VIDEO, LEADING_AUDIO):
+        lead = leading_path
+        if leading_kind == LEADING_AUDIO:
+            video_seconds = sum(s.play_seconds or 0.0 for s in prepared) - crossfade * (
+                len(prepared) - 1
+            )
+            lead = renderer.looped_leading(
+                leading_path, max(0.0, video_seconds), crossfade, tmp_dir
+            )
+        return renderer.build_leading_command(
+            prepared, lead, leading_kind, out_file, crossfade=crossfade
+        )
+    return renderer.build_command(prepared, out_file, crossfade=crossfade)
+
+
 def stream_samples(
     segments: list[MixSegment],
     *,
@@ -67,6 +108,7 @@ def stream_samples(
     log_path: str | None = None,
     leading_path: str | None = None,
     leading_kind: str = "none",
+    timeline: bool = False,
 ) -> None:
     """Prep clips to small ``.ts``, render ONE mix FILE, then open it in VLC.
 
@@ -78,27 +120,17 @@ def stream_samples(
     tmp_dir = tempfile.mkdtemp(prefix="ytdl_sample_")
     try:
         prepared = _prepare_all(segments, sample_prep, tmp_dir)
-        if len(prepared) < 2:
+        # Timeline overlays place each clip independently, so a single clip is valid;
+        # the sequential xfade needs at least two clips to cross-fade.
+        if len(prepared) < (1 if timeline else 2):
             print("[sample] not enough playable clips — nothing to show.", flush=True)
             return
         out_file = str(Path(tmp_dir) / "mix.mp4")
-        if leading_path and leading_kind in ("video", "audio"):
-            # Members supply the picture; the leading track supplies the soundtrack
-            # (audio) or the master picture (video). Same render-to-file→VLC flow.
-            lead = leading_path
-            if leading_kind == "audio":
-                # Clean crossfade-loop the song when it is shorter than the video.
-                video_seconds = sum(s.play_seconds or 0.0 for s in prepared) - crossfade * (
-                    len(prepared) - 1
-                )
-                lead = renderer.looped_leading(
-                    leading_path, max(0.0, video_seconds), crossfade, tmp_dir
-                )
-            command = renderer.build_leading_command(
-                prepared, lead, leading_kind, out_file, crossfade=crossfade
-            )
-        else:
-            command = renderer.build_command(prepared, out_file, crossfade=crossfade)
+        command = _render_command(
+            renderer, prepared, out_file, crossfade=crossfade,
+            leading_path=leading_path, leading_kind=leading_kind,
+            timeline=timeline, tmp_dir=tmp_dir,
+        )
         print("[sample] rendering the mix…", flush=True)
         with _log_handle(log_path) as log:
             runner(command, stdin=subprocess.DEVNULL, stdout=log, stderr=log).wait()

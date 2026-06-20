@@ -14,12 +14,14 @@ in tests. Kept ≤150 code lines (heavy machinery lives in the collaborators).
 from __future__ import annotations
 
 import dataclasses
+import logging
 from collections.abc import Callable
 from typing import Any
 
 from ytdl.constants import (
     LEADING_AUDIO,
     LEADING_VIDEO,
+    MEMBER_IMAGE,
     MIX_SUBTITLE,
     OUTPUT_DISPLAY,
     OUTPUT_SAVE,
@@ -33,6 +35,12 @@ from ytdl.services.playlist.summary import compute_summary
 
 _DEFAULT_MODE = ("playback.default_mode", "option2")
 _CROSSFADE = ("playback.crossfade_duration_seconds", 3)
+_LOGGER = logging.getLogger("ytdl.playlist")
+
+
+def _is_timeline(segments: list[Any]) -> bool:
+    """True when any member is an image or has an absolute timeline position."""
+    return any(s.kind == MEMBER_IMAGE or s.at is not None for s in segments)
 
 
 class PlaylistRunner:
@@ -71,17 +79,24 @@ class PlaylistRunner:
         if not gate_subtitle(meta.active_mix_streams()):
             segments = [_drop_subtitle(seg) for seg in segments]
         outputs = meta.active_outputs()
+        timeline = _is_timeline(segments)
         result: dict[str, Any] = {
             "outputs": outputs,
             "track_count": len(segments),
+            "timeline": timeline,
             "summary": compute_summary(segments, crossfade=self._crossfade),
         }
         if OUTPUT_SAVE in outputs:
-            result["saved_path"] = self._save(playlist, segments)
+            if timeline:
+                # Save of an absolute-timeline/image mix is a follow-up; display/stream
+                # render it live. Skip rather than mis-render via the sequential path.
+                _LOGGER.warning("save not yet supported for image/timeline playlists; skipping")
+            else:
+                result["saved_path"] = self._save(playlist, segments)
         if OUTPUT_DISPLAY in outputs:
-            self._display(meta, segments)
+            self._display(meta, segments, timeline)
         if OUTPUT_STREAM in outputs:
-            self._stream(segments)
+            self._stream(meta, segments, timeline)
         return result
 
     def _save(self, playlist: Any, segments: list[Any]) -> str:
@@ -100,36 +115,31 @@ class PlaylistRunner:
             segments, meta.target_folder, crossfade=self._crossfade
         )
 
-    def _display(self, meta: Any, segments: list[Any]) -> None:
+    def _display(self, meta: Any, segments: list[Any], timeline: bool) -> None:
         """Play the mix live, looping while ``loop`` (bounded by ``should_continue``)."""
         mode = self._config.get(*_DEFAULT_MODE)
         leading_kind = meta.leading_kind()
         leading_file = meta.leading_file()
         iteration = 0
         while True:
-            self._play_once(mode, segments, leading_kind, leading_file)
+            self._play_once(mode, segments, leading_kind, leading_file, timeline)
             iteration += 1
             if not meta.loop or not self._should_continue(iteration):
                 break
 
     def _play_once(
-        self, mode: str, segments: list[Any], leading_kind: str, leading_file: str
+        self, mode: str, segments: list[Any], leading_kind: str, leading_file: str,
+        timeline: bool,
     ) -> None:
         """Verify the VLC dep and play the segments once.
 
-        A leading track (audio/video) ALWAYS renders ONE mix file and opens it in
-        ONE VLC — the same render-to-file path as ``--sample-play`` — because the
-        Option-2 per-clip matrix cannot apply a separate leading soundtrack.
+        A timeline (image/absolute placement) or a leading track ALWAYS renders ONE
+        mix file and opens it in ONE VLC — the same render-to-file path as
+        ``--sample-play`` — because the Option-2 per-clip matrix cannot composite a
+        timeline or apply a separate leading soundtrack.
         """
-        if leading_kind in (LEADING_AUDIO, LEADING_VIDEO) and leading_file:
-            vlc = self._vlc.vlc_binary()
-            self._option1.run_segments(
-                segments,
-                crossfade=self._crossfade,
-                vlc_binary=vlc,
-                leading_path=leading_file,
-                leading_kind=leading_kind,
-            )
+        if timeline or (leading_kind in (LEADING_AUDIO, LEADING_VIDEO) and leading_file):
+            self._one_file(segments, leading_kind, leading_file, timeline)
         elif mode == PLAYBACK_OPTION1:
             vlc = self._vlc.vlc_binary()
             self._option1.run_segments(
@@ -139,12 +149,22 @@ class PlaylistRunner:
             self._vlc.ensure_libvlc()
             self._option2.play_segments(segments, crossfade=self._crossfade)
 
-    def _stream(self, segments: list[Any]) -> None:
-        """Stream the mix over a local VLC loopback (Option-1 ``vlc -``)."""
-        vlc = self._vlc.vlc_binary()
+    def _one_file(
+        self, segments: list[Any], leading_kind: str, leading_file: str, timeline: bool
+    ) -> None:
+        """Render ONE mix file (timeline/leading-aware) and open it in ONE VLC."""
         self._option1.run_segments(
-            segments, crossfade=self._crossfade, vlc_binary=vlc
+            segments,
+            crossfade=self._crossfade,
+            vlc_binary=self._vlc.vlc_binary(),
+            leading_path=leading_file or None,
+            leading_kind=leading_kind,
+            timeline=timeline,
         )
+
+    def _stream(self, meta: Any, segments: list[Any], timeline: bool) -> None:
+        """Stream the mix over a local VLC loopback (Option-1 render-to-file)."""
+        self._one_file(segments, meta.leading_kind(), meta.leading_file(), timeline)
 
 
 def gate_subtitle(active_mix_streams: list[str]) -> bool:

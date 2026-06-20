@@ -79,6 +79,7 @@ class Option1Engine:
         vlc_binary: str | None = None,
         leading_path: str | None = None,
         leading_kind: str = "none",
+        timeline: bool = False,
     ) -> None:
         """Prep each clip's sample to a small ``.ts`` ONE AT A TIME, then stitch.
 
@@ -99,4 +100,5 @@ class Option1Engine:
             log_path=self._log_path,
             leading_path=leading_path,
             leading_kind=leading_kind,
+            timeline=timeline,
         )

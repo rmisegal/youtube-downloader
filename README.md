@@ -378,6 +378,53 @@ unsupported version, missing required member `id`/`file`, or a member file that 
 
 ---
 
+## Images & transitions (timeline overlay)
+
+A playlist member can be a **still image** (`type: image`) placed on the **leading-audio timeline**: it pops
+up at an absolute soundtrack time (`at`), disappears at its `until` timestamp, and animates with a transition.
+Images can be **mixed with videos** and a later member **overlays** an earlier one (so an image sits on top of
+a running video). The leading audio is the soundtrack and follows the visuals — if the visuals are **shorter**
+than the song it **fades out** at the end; if **longer**, the song **crossfade-loops** to fill (same rule as
+the video mix). Use playlist **`version: "1.04"`**.
+
+```yaml
+version: "1.04"
+metadata:
+  source_folder: 'C:\media'
+  output:  { display: true }
+  mix:     { video: true, audio: false }     # members contribute picture only
+  leading: { kind: audio, file: 'C:\media\song.mp3' }   # the soundtrack
+members:
+  - { id: 1, type: video, file: clip.mp4,  at: 0,  start_time: 25, play_time: 30 }
+  - { id: 2, type: image, file: cover.jpg, at: 10, until: 18, transition: random }
+  - { id: 3, type: image, file: band.png,  at: 16, until: 24, transition: zoomin }
+```
+Run it (opens ONE VLC, auto-plays, replayable):
+```powershell
+uv run python -m ytdl --playlist-file "C:\media\photo-mix.yaml"
+```
+
+**Image member keys:** `type: image`, `at` (timeline start, s), `until` (timeline end, s; duration = `until−at`),
+`transition`, `direction`.
+
+**Transitions** (`transition:`) — `random` is the **default**:
+
+| Name | Effect |
+|------|--------|
+| `fade` | fade in/out only |
+| `zoomin` / `zoomout` | Ken-Burns zoom (FFmpeg `zoompan`) |
+| `panleft` / `panright` / `panup` / `pandown` | slow pan across the image |
+| `random` | picks one of the above at render time (default) |
+
+Every image also gets a short fade-in/out so overlapping timeline slots blend. Supported image formats:
+`.jpg .jpeg .png .webp .bmp .gif`. Implementation reuses the `--sample-play` pipeline (each member is prepped
+to a uniform clip, then composited), so playback is one VLC window, auto-playing and replayable.
+
+> **Notes:** `save`/`stream` of an image **timeline** is a follow-up — use `display` for now (save is skipped
+> with a warning). A **title/text overlay** above images and videos is also planned (deferred).
+
+---
+
 ## Secrets / optional environment
 
 Public YouTube videos require **no API key and no secrets**. Optional, user-supplied values may be
