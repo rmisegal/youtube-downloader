@@ -71,13 +71,17 @@ def test_speed_adds_setpts_and_atempo() -> None:
     assert "atempo=2" in graph
 
 
-def test_resolution_adds_scale() -> None:
-    segs = [MixSegment(path="a.mp4", play_seconds=5.0, resolution="1280x720"), MixSegment(path="b.mp4", play_seconds=5.0)]
+def test_every_input_normalized_to_common_canvas() -> None:
+    # xfade requires uniform inputs, so EVERY input is scaled+padded to one
+    # canvas (+ setsar/fps/format/settb) regardless of size — even "max" clips.
+    segs = [MixSegment(path="a.mp4", play_seconds=5.0), MixSegment(path="b.mp4", play_seconds=5.0)]
     cmd = _renderer().build_command(segs, "out.mp4", crossfade=1)
     graph = cmd[cmd.index("-filter_complex") + 1]
-    assert "scale=1280:720" in graph
-    # the second segment ("max") gets no scale filter
-    assert graph.count("scale=") == 1
+    assert graph.count("scale=1920:1080:force_original_aspect_ratio=decrease") == 2
+    assert graph.count("pad=1920:1080") == 2
+    assert graph.count("setsar=1") == 2
+    assert graph.count("fps=30") == 2
+    assert graph.count("format=yuv420p") == 2
 
 
 def test_codecs_and_container_from_config() -> None:

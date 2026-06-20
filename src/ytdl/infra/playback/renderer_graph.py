@@ -12,8 +12,11 @@ from collections.abc import Sequence
 from ytdl.services.mixer.segment import MixSegment
 
 # Normalization defaults applied to every input before xfade (PRD §12).
+# xfade REQUIRES every input to share size + SAR + fps + timebase, so all inputs
+# are scaled+padded to one common canvas regardless of per-member resolution.
 _FPS = 30
 _SAR = "1"
+_CANVAS = (1920, 1080)
 
 
 def _fmt(value: float) -> str:
@@ -21,19 +24,30 @@ def _fmt(value: float) -> str:
     return str(int(value)) if float(value).is_integer() else str(value)
 
 
-def _video_norm(seg: MixSegment, idx: int, label: str) -> str:
-    """Normalization chain for one video input → labelled output ``label``."""
+def _video_norm(
+    seg: MixSegment, idx: int, label: str, canvas: tuple[int, int] = _CANVAS, fps: int = _FPS
+) -> str:
+    """Normalization chain for one video input → labelled output ``label``.
+
+    Every input is forced onto the SAME canvas (scale keeping aspect + pad),
+    pixel format, SAR, fps and timebase so ``xfade`` accepts heterogeneous clips.
+    """
+    w, h = canvas
     steps: list[str] = []
-    if seg.resolution and seg.resolution != "max":
-        steps.append(f"scale={seg.resolution.replace('x', ':')}")
-    steps.append(f"fps={_FPS}")
-    steps.append(f"setsar={_SAR}")
-    if seg.speed != 1.0:
-        steps.append(f"setpts=PTS/{_fmt(seg.speed)}")
     if isinstance(seg.subtitle, str):
         steps.append(f"subtitles={seg.subtitle}")
     elif seg.subtitle is True:
         steps.append("subtitles=si=0")
+    steps += [
+        f"scale={w}:{h}:force_original_aspect_ratio=decrease",
+        f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2",
+        "setsar=1",
+        f"fps={fps}",
+        "format=yuv420p",
+        "settb=AVTB",
+    ]
+    if seg.speed != 1.0:
+        steps.append(f"setpts=PTS/{_fmt(seg.speed)}")
     chain = ",".join(steps)
     return f"[{idx}:v]{chain}[{label}]"
 
@@ -81,9 +95,15 @@ def _chain(labels: Sequence[str], offsets: Sequence[float], effect: str, crossfa
     return steps, current
 
 
-def build_video_graph(segments: Sequence[MixSegment], durations: Sequence[float], crossfade: float) -> tuple[list[str], str]:
+def build_video_graph(
+    segments: Sequence[MixSegment],
+    durations: Sequence[float],
+    crossfade: float,
+    canvas: tuple[int, int] = _CANVAS,
+    fps: int = _FPS,
+) -> tuple[list[str], str]:
     """Return (filter steps, final label) for the members' video xfade chain."""
-    norms = [_video_norm(s, i, f"v{i}") for i, s in enumerate(segments)]
+    norms = [_video_norm(s, i, f"v{i}", canvas, fps) for i, s in enumerate(segments)]
     offsets = _offsets(segments, durations, crossfade)
     chain, label = _chain([f"v{i}" for i in range(len(segments))], offsets, segments[0].effect, crossfade, "v")
     return norms + chain, label
