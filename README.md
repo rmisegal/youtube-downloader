@@ -127,10 +127,10 @@ directory is created automatically if it does not exist (idempotent — no error
 
 All tunables are **config-driven** — there are no hardcoded values in the code. Each tunable is read
 via `ConfigManager.get("a.b", default)`; `src/ytdl/constants.py` holds only true constants. Both
-config files carry `"version": "1.01"`, validated at startup against the supported versions; a
+config files carry `"version": "1.03"`, validated at startup against the supported versions; a
 mismatch raises `ConfigVersionError` (exit code 5).
 
-### `config/setup.json` (version 1.01)
+### `config/setup.json` (version 1.03)
 
 | Key | Purpose |
 |-----|---------|
@@ -142,7 +142,7 @@ mismatch raises `ConfigVersionError` (exit code 5).
 | `subtitles.format` / `subtitles.include_auto` | Subtitle format (`srt`) and include auto-generated (`true`). |
 | `ffmpeg.location` | FFmpeg locator strategy (`auto` = resolve via `imageio-ffmpeg`). |
 
-### `config/rate_limits.json` (version 1.01) — avoiding YouTube blocks
+### `config/rate_limits.json` (version 1.03) — avoiding YouTube blocks
 
 YouTube does not publish hard download quotas; abuse triggers **HTTP 429 (Too Many Requests)** and
 temporary IP/account throttling. This tool defends the account two ways, both fully config-driven:
