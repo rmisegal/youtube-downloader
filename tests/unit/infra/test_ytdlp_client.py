@@ -10,7 +10,14 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from ytdl.infra.ytdlp_client import YtDlpClient
+from ytdl.shared.errors import (
+    InvalidUrlError,
+    NetworkError,
+    UnsupportedRequestError,
+)
 
 URL = "https://youtu.be/dQw4w9WgXcQ"
 OPTS: dict[str, Any] = {"format": "bv*+ba/b", "merge_output_format": "mp4"}
@@ -79,3 +86,40 @@ def test_opts_passed_through_untouched() -> None:
         client.extract_info(URL, OPTS)
     passed_opts = mock_ydl.call_args.args[0]
     assert passed_opts is OPTS
+
+
+def test_unsupported_error_translated() -> None:
+    """yt-dlp ``UnsupportedError`` becomes :class:`UnsupportedRequestError`."""
+    from yt_dlp.utils import UnsupportedError
+
+    client = YtDlpClient(FakeGatekeeper())
+    with patch("yt_dlp.YoutubeDL") as mock_ydl:
+        mock_ydl.return_value.extract_info.side_effect = UnsupportedError(URL)
+        with pytest.raises(UnsupportedRequestError):
+            client.download(URL, OPTS)
+
+
+def test_invalid_url_download_error_translated() -> None:
+    """A DownloadError whose message indicates a bad URL → InvalidUrlError."""
+    from yt_dlp.utils import DownloadError
+
+    client = YtDlpClient(FakeGatekeeper())
+    with patch("yt_dlp.YoutubeDL") as mock_ydl:
+        mock_ydl.return_value.extract_info.side_effect = DownloadError(
+            "ERROR: 'x' is not a valid URL"
+        )
+        with pytest.raises(InvalidUrlError):
+            client.download(URL, OPTS)
+
+
+def test_generic_download_error_translated_to_network() -> None:
+    """A generic DownloadError → NetworkError."""
+    from yt_dlp.utils import DownloadError
+
+    client = YtDlpClient(FakeGatekeeper())
+    with patch("yt_dlp.YoutubeDL") as mock_ydl:
+        mock_ydl.return_value.extract_info.side_effect = DownloadError(
+            "ERROR: unable to download: connection reset by peer"
+        )
+        with pytest.raises(NetworkError):
+            client.download(URL, OPTS)
