@@ -162,6 +162,28 @@ def test_defaults_used_when_limit_keys_absent(clock: FakeClock) -> None:
     assert limiter.allow() is True
 
 
+def test_active_property_tracks_held_slots(clock: FakeClock) -> None:
+    limiter = _limiter(clock, concurrent_max=3)
+
+    assert limiter.active == 0
+    limiter.acquire()
+    limiter.acquire()
+    assert limiter.active == 2
+    limiter.release()
+    assert limiter.active == 1
+
+
+def test_prune_drops_events_past_longest_window(clock: FakeClock) -> None:
+    # burst_window <= 60 so the 60s window is the horizon; advancing past it
+    # forces _prune to popleft the stale timestamp (exercises the drop loop).
+    limiter = _limiter(clock, requests_per_minute=1, burst_size=999, burst_window_seconds=10)
+
+    assert limiter.allow() is True  # records t=0
+    clock.advance(61)  # t=0 now older than the 60s horizon -> pruned
+    # A fresh slot is available, proving the stale event was dropped, not blocking.
+    assert limiter.allow() is True
+
+
 def test_constructed_from_config_manager() -> None:
     cfg = ConfigManager(
         data={

@@ -136,3 +136,32 @@ def test_convenience_methods_delegate(sdk, mock_client, tmp_path):
     assert sdk.download_audio("u", output_dir=out)["modes"] == ["audio"]
     assert sdk.download_subtitles("u", output_dir=out)["modes"] == ["subs"]
     assert sdk.download_video("u", output_dir=out)["modes"] == ["video"]
+
+
+def test_build_client_wires_real_stack_without_network():
+    """No injected client -> _build_client assembles the gatekeeper stack.
+
+    Construction alone touches no network (no extract/download is called), so
+    this safely covers the rate-limit/queue/gatekeeper wiring path.
+    """
+    from ytdl.infra.ytdlp_client import YtDlpClient
+
+    config = ConfigManager(data=dict(_SAMPLE))
+    rate_config = ConfigManager(
+        data={
+            "version": "1.00",
+            "rate_limits": {
+                "services": {"youtube": {"requests_per_minute": 20, "max_retries": 3}},
+                "queue": {"max_depth": 100, "overflow_strategy": "reject_oldest"},
+            },
+        }
+    )
+    sdk = YoutubeDownloaderSDK(config=config, rate_config=rate_config)
+    assert isinstance(sdk._client, YtDlpClient)
+
+
+def test_empty_name_uses_title_template(sdk, mock_client, tmp_path):
+    """An empty/None name falls back to the %(title)s output template."""
+    sdk.download("u", name="", output_dir=str(tmp_path / "out"))
+    opts = _opts(mock_client)
+    assert "%(title)s" in opts["outtmpl"]

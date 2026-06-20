@@ -33,7 +33,7 @@ ignore = ["E501"]
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["src/main.py"]
+omit = ["src/main.py", "src/ytdl/__main__.py"]
 
 [tool.coverage.report]
 fail_under = 85
