@@ -8,12 +8,11 @@ exposes :meth:`download` (fetch-once + union of post-processors, PRD §5) and
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-from ytdl.constants import MODE_AUDIO, MODE_SUBS, MODE_VIDEO
 from ytdl.infra.ytdlp_client import YtDlpClient
-from ytdl.sdk.compose import compose_opts
+from ytdl.sdk.download_op import run_download as _run_download
+from ytdl.sdk.probe import probe_playlist as _probe_playlist
 from ytdl.sdk.wiring import (
     build_client,
     build_extra_opts,
@@ -28,11 +27,6 @@ from ytdl.services.subtitles import SubtitleDownloader
 from ytdl.services.video import VideoDownloader
 from ytdl.shared.config import ConfigManager
 from ytdl.shared.version import __version__
-
-_OUTPUT_DIR_KEY = "paths.output_dir"
-_RESOLUTION_KEY = "defaults.resolution"
-_SUB_LANG_KEY = "defaults.sub_lang"
-_DEFAULT_OUTPUT_DIR = "./downloads"
 
 
 class YoutubeDownloaderSDK:
@@ -61,21 +55,7 @@ class YoutubeDownloaderSDK:
         Returns ``{"title", "count", "entries": [{"index", "id", "title"}, ...]}``.
         ``count`` is the total number of AVAILABLE items in the list.
         """
-        opts = dict(self._base.build_base_opts(".", None))
-        opts.update({"extract_flat": "in_playlist", "quiet": True, "no_warnings": True})
-        info = self._client.extract_info(url, opts)
-        entries = list(info.get("entries") or [])
-        if info.get("_type") != "playlist" and not entries:
-            return None
-        items = [
-            {"index": i, "id": e.get("id"), "title": e.get("title") or e.get("id") or f"item {i}"}
-            for i, e in enumerate(entries, start=1)
-        ]
-        return {
-            "title": info.get("title"),
-            "count": info.get("playlist_count") or len(items),
-            "entries": items,
-        }
+        return _probe_playlist(self._client, self._base, url)
 
     def download(
         self,
@@ -97,35 +77,24 @@ class YoutubeDownloaderSDK:
         restricts a list URL to the single video; ``playlist_items`` (e.g. "1,3,5")
         selects specific entries. Returns a small dict describing what was produced.
         """
-        if not (video or audio or subs):
-            video = True
-        out_dir = output_dir or self._config.get(_OUTPUT_DIR_KEY, _DEFAULT_OUTPUT_DIR)
-        Path(out_dir).mkdir(parents=True, exist_ok=True)
-        if resolution is None:
-            resolution = self._config.get(_RESOLUTION_KEY)
-        if sub_lang is None:
-            sub_lang = self._config.get(_SUB_LANG_KEY, "en")
-
-        merged = compose_opts(
-            base_opts=self._base.build_base_opts(out_dir, name),
-            video=self._video if video else None,
-            audio=self._audio if audio else None,
-            subs=self._subs if subs else None,
+        return _run_download(
+            self._client,
+            self._base,
+            self._video,
+            self._audio,
+            self._subs,
+            self._config,
+            url=url,
+            video=video,
+            audio=audio,
+            subs=subs,
+            output_dir=output_dir,
+            name=name,
             resolution=resolution,
             sub_lang=sub_lang,
+            no_playlist=no_playlist,
+            playlist_items=playlist_items,
         )
-        if no_playlist:
-            merged["noplaylist"] = True
-        if playlist_items:
-            merged["playlist_items"] = playlist_items
-        self._client.download(url, merged)
-
-        modes = [
-            mode
-            for mode, on in ((MODE_VIDEO, video), (MODE_AUDIO, audio), (MODE_SUBS, subs))
-            if on
-        ]
-        return {"url": url, "modes": modes, "output_dir": out_dir, "name": name}
 
     def mix_local_directory(
         self,
