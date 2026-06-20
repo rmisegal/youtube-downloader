@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from ytdl.constants import LEADING_AUDIO, LEADING_VIDEO
+from ytdl.infra.playback.concat import build_concat_command, is_contiguous
 from ytdl.infra.playback.renderer import MixRenderer
 from ytdl.infra.playback.stream_server import DEFAULT_VLC_BINARY
 from ytdl.infra.playback.timeline import build_timeline_command, timeline_total
@@ -72,12 +73,20 @@ def _render_command(
     timeline: bool,
     tmp_dir: str,
 ) -> list[str]:
-    """Pick the render command: absolute-timeline overlay, leading-track, or xfade."""
+    """Pick the render command: concat (contiguous), overlay, leading-track, or xfade."""
     if timeline:
         total = timeline_total(prepared)
         lead = leading_path
         if leading_path and leading_kind == LEADING_AUDIO:
             lead = renderer.looped_leading(leading_path, total, crossfade, tmp_dir)
+        # Contiguous slots (music-sync) -> fast concat (video stream-copied); only an
+        # OVERLAPPING manual timeline needs the heavier N-input overlay compositor.
+        if is_contiguous(prepared):
+            return build_concat_command(
+                renderer, prepared, total=total, leading_path=lead,
+                leading_kind=leading_kind, crossfade=crossfade,
+                output_path=out_file, tmp_dir=tmp_dir,
+            )
         return build_timeline_command(
             renderer, prepared, total=total, leading_path=lead,
             leading_kind=leading_kind, crossfade=crossfade, output_path=out_file,

@@ -475,10 +475,12 @@ Default mapping: Chorus→`pulse` (heartbeat), Build-up→`shake`, Verse→`fade
 effects also work as a manual `transition:` on any image. Verified on a real song: 103.4 BPM, 6 sections, with
 the heartbeat landing on the chorus beats and shake on the build-up.
 
-> **Scale note:** `mode: auto` over a *full* song yields many cut-points (one prepped clip each), so it's best
-> for shorter clips/sections today; use `mode: bar` or `section` for long tracks. A concat-based renderer for
-> dense beat-synced cuts is a planned optimization. (GPU: the analyzer runs on CPU and is fast enough; your
-> NVIDIA GPU + `cuda_libs` are detected and reported via `gpu_available` for a future optional neural backend.)
+> **Scale:** contiguous music-sync slots render via a **concat** path — the prepped clips are stream-**copied**
+> (no re-encode), so a full song's hundreds of cut-points render in a couple of seconds regardless of count
+> (only an *overlapping* manual timeline uses the heavier N-input overlay). The remaining cost is the one-time
+> per-clip prep (~0.2–0.9s each), so a very dense `mode: auto` over a long track still spends most of its time
+> preparing clips; `mode: bar` keeps that small. (GPU: the analyzer runs on CPU and is fast enough; your NVIDIA
+> GPU + `cuda_libs` are detected and reported via `gpu_available` for a future optional neural backend.)
 
 ---
 
