@@ -19,6 +19,17 @@ from ytdl.infra.ffmpeg import FfmpegLocator
 from ytdl.infra.playback.duration import probe_duration
 from ytdl.infra.playback.libvlc_matrix import LibVlcPlayerMatrix
 from ytdl.infra.playback.stream_server import StreamServer
+from ytdl.services.mixer.segment import MixSegment
+
+
+def _segment_mix_point(
+    seg: MixSegment, duration_fn: Callable[..., float], ffmpeg: FfmpegLocator
+) -> float:
+    """Mix-out point of ``seg`` = ``start`` + play window (probed if ``None``)."""
+    play = seg.play_seconds
+    if play is None:
+        play = duration_fn(seg.path, ffmpeg.exe())
+    return seg.start + play
 
 
 class Option1Engine:
@@ -54,6 +65,27 @@ class Option1Engine:
                 source_duration=duration,
                 source_mix_time=source_mix_time,
                 target_start_time=target_start_time or 0.0,
+                vlc_binary=vlc_binary,
+            )
+
+    def run_segments(
+        self,
+        segments: list[MixSegment],
+        *,
+        crossfade: float,
+        vlc_binary: str | None = None,
+    ) -> None:
+        """Stream each consecutive segment pair with per-clip in/mix points."""
+        for index in range(len(segments) - 1):
+            source, target = segments[index], segments[index + 1]
+            mix = _segment_mix_point(source, self._duration_fn, self._ffmpeg)
+            self._stream.stream_pair(
+                source.path,
+                target.path,
+                crossfade=crossfade,
+                source_duration=mix,
+                source_mix_time=mix,
+                target_start_time=target.start,
                 vlc_binary=vlc_binary,
             )
 
@@ -97,3 +129,30 @@ class Option2Engine:
             target_start_time=target_start_time or 0.0,
         )
         matrix.play_sequence(paths, durations)
+
+    def play_segments(
+        self, segments: list[MixSegment], *, crossfade: float
+    ) -> None:
+        """Drive the matrix with each segment's in-point and mix point."""
+        if not segments:
+            return
+        matrix = self._matrix_factory(
+            vlc_module=self._vlc,
+            clock=self._clock,
+            sleep=self._sleep,
+            crossfade=crossfade,
+            source_mix_time=None,
+            target_start_time=segments[0].start,
+        )
+        active, idle = matrix.player_a, matrix.player_b
+        matrix.target_start_time = segments[0].start
+        matrix._prepare_next(active, segments[0].path)
+        for index in range(len(segments) - 1):
+            source, target = segments[index], segments[index + 1]
+            matrix.target_start_time = target.start
+            matrix._prepare_next(idle, target.path)
+            matrix.source_mix_time = _segment_mix_point(
+                source, self._duration_fn, self._ffmpeg
+            )
+            active = matrix.crossfade_pair(active, idle, matrix.source_mix_time)
+            idle = matrix.player_a if active is matrix.player_b else matrix.player_b

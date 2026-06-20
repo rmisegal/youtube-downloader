@@ -34,3 +34,9 @@ class RateLimitExceededError(YtdlError):
 class PlaybackDependencyError(YtdlError):
     """Raised when the video mixer cannot find a required external dependency
     (VLC Media Player binary for Option 1, or libVLC/python-vlc for Option 2)."""
+
+
+class PlaylistError(YtdlError):
+    """Raised on a malformed or invalid YAML playlist — schema/validation
+    error, unsupported version, or a missing member file. Maps to CLI
+    exit code 8 (PRD-playlist §9)."""

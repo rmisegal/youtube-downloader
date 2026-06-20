@@ -3,8 +3,165 @@
 Builds a single continuous FFmpeg graph over N trimmed inputs (xfade + acrossfade
 with cumulative offsets) and writes one file; handles leading-video (``-an``) and
 leading-audio (``-vn``) variants. Reuses ``FfmpegLocator`` + ``probe_duration``.
-
-# Implemented in Phase 4.
 """
 
 from __future__ import annotations
+
+import subprocess
+from collections.abc import Callable, Sequence
+from pathlib import Path
+from typing import Any
+
+from ytdl.infra.ffmpeg import FfmpegLocator
+from ytdl.infra.playback.duration import probe_duration
+from ytdl.infra.playback.renderer_graph import (
+    build_audio_graph,
+    build_video_graph,
+)
+from ytdl.services.mixer.segment import MixSegment
+
+
+def _fmt(value: float) -> str:
+    """Format a time/duration compactly (no trailing ``.0``)."""
+    return str(int(value)) if float(value).is_integer() else str(value)
+
+
+class MixRenderer:
+    """Render a ``list[MixSegment]`` into ONE file via a continuous FFmpeg graph."""
+
+    def __init__(
+        self,
+        ffmpeg: FfmpegLocator | None = None,
+        runner: Callable[..., Any] = subprocess.run,
+        duration_fn: Callable[..., float] = probe_duration,
+        config: Any = None,
+    ) -> None:
+        self._ffmpeg = ffmpeg or FfmpegLocator()
+        self._runner = runner
+        self._duration_fn = duration_fn
+        get = config.get if config is not None else (lambda _k, default=None: default)
+        self._video_codec = get("render.video_codec", "libx264")
+        self._audio_codec = get("render.audio_codec", "aac")
+        self._container = get("render.container", "mp4")
+
+    def _durations(self, segments: Sequence[MixSegment]) -> list[float]:
+        """Resolve each segment's play window, probing when ``play_seconds`` is None."""
+        out: list[float] = []
+        for seg in segments:
+            if seg.play_seconds is None:
+                out.append(self._duration_fn(seg.path, self._ffmpeg.exe()))
+            else:
+                out.append(seg.play_seconds)
+        return out
+
+    def _inputs(self, segments: Sequence[MixSegment], durations: Sequence[float]) -> list[str]:
+        """``-ss start -t play`` before each ``-i path`` (one input per segment)."""
+        argv: list[str] = []
+        for seg, play in zip(segments, durations, strict=True):
+            argv += ["-ss", _fmt(seg.start), "-t", _fmt(play), "-i", seg.path]
+        return argv
+
+    def _codec_out(self, output_path: str) -> list[str]:
+        """Codec flags + output path under the configured container."""
+        return [
+            "-c:v",
+            self._video_codec,
+            "-c:a",
+            self._audio_codec,
+            str(output_path),
+        ]
+
+    def build_command(
+        self, segments: Sequence[MixSegment], output_path: str, *, crossfade: float
+    ) -> list[str]:
+        """Full N-input xfade+acrossfade render command (no leading track)."""
+        durations = self._durations(segments)
+        vsteps, vlabel = build_video_graph(segments, durations, crossfade)
+        asteps, alabel = build_audio_graph(segments, durations, crossfade)
+        graph = ";".join(vsteps + asteps)
+        return [
+            self._ffmpeg.exe(),
+            "-y",
+            *self._inputs(segments, durations),
+            "-filter_complex",
+            graph,
+            "-map",
+            f"[{vlabel}]",
+            "-map",
+            f"[{alabel}]",
+            *self._codec_out(output_path),
+        ]
+
+    def build_leading_command(
+        self,
+        segments: Sequence[MixSegment],
+        leading_path: str,
+        leading_kind: str,
+        output_path: str,
+        *,
+        crossfade: float,
+    ) -> list[str]:
+        """Render with a leading video (``-an``) or leading audio (``-vn``) master."""
+        durations = self._durations(segments)
+        # Leading is input 0, so member graph indices are bumped by +1.
+        if leading_kind == "video":
+            asteps, alabel = self._shifted(build_audio_graph, segments, durations, crossfade)
+            graph = ";".join(asteps)  # leading picture kept as-is; only audio mixed
+            lead_in = ["-an", "-i", leading_path]
+            return self._assemble(lead_in, segments, durations, graph, "0:v", f"[{alabel}]", output_path)
+        # leading_kind == "audio": discard the leading picture, keep its audio.
+        vsteps, vlabel = self._shifted(build_video_graph, segments, durations, crossfade)
+        graph = ";".join(vsteps)
+        lead_in = ["-vn", "-i", leading_path]
+        return self._assemble(lead_in, segments, durations, graph, f"[{vlabel}]", "0:a", output_path)
+
+    @staticmethod
+    def _shifted(builder, segments, durations, crossfade):  # type: ignore[no-untyped-def]
+        """Build a member graph whose input indices start at 1 (leading is 0)."""
+        steps, label = builder(segments, durations, crossfade)
+        return [_bump_indices(s, len(segments)) for s in steps], label
+
+    def _assemble(self, lead_in, segments, durations, graph, vmap, amap, output_path):  # type: ignore[no-untyped-def]
+        """Combine leading input, members, graph and pre-formatted maps into argv."""
+        return [
+            self._ffmpeg.exe(),
+            "-y",
+            *lead_in,
+            *self._inputs(segments, durations),
+            "-filter_complex",
+            graph,
+            "-map",
+            vmap,
+            "-map",
+            amap,
+            *self._codec_out(output_path),
+        ]
+
+    def render(
+        self,
+        segments: Sequence[MixSegment],
+        target_folder: str,
+        *,
+        crossfade: float,
+        leading_path: str | None = None,
+        leading_kind: str = "none",
+        name: str = "mix",
+    ) -> str:
+        """Build the appropriate command and run it via the injected runner."""
+        output_path = str(Path(target_folder) / f"{name}.{self._container}")
+        if leading_kind in ("video", "audio") and leading_path:
+            command = self.build_leading_command(
+                segments, leading_path, leading_kind, output_path, crossfade=crossfade
+            )
+        else:
+            command = self.build_command(segments, output_path, crossfade=crossfade)
+        self._runner(command)
+        return output_path
+
+
+def _bump_indices(step: str, count: int) -> str:
+    """Shift input-stream indices ``[i:v]``/``[i:a]`` up by one for a leading track."""
+    out = step
+    for i in reversed(range(count)):
+        out = out.replace(f"[{i}:v]", f"[{i + 1}:v]").replace(f"[{i}:a]", f"[{i + 1}:a]")
+    return out
