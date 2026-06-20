@@ -66,25 +66,31 @@ def stream_samples(
     vlc_binary: str | None = None,
     log_path: str | None = None,
 ) -> None:
-    """Prep clips to small ``.ts``, then xfade-stitch them into one ``vlc -``."""
+    """Prep clips to small ``.ts``, render ONE mix FILE, then open it in VLC.
+
+    A real file (not a live ``vlc -`` pipe) means VLC **auto-plays** it and the
+    user can **replay/seek** — a piped stream is one-shot, un-seekable, and never
+    restarts (the "can't open the video" error on replay). The mix file lives in
+    the temp dir for the whole VLC session and is removed once VLC is closed.
+    """
     tmp_dir = tempfile.mkdtemp(prefix="ytdl_sample_")
     try:
         prepared = _prepare_all(segments, sample_prep, tmp_dir)
         if len(prepared) < 2:
+            print("[sample] not enough playable clips — nothing to show.", flush=True)
             return
-        command = renderer.build_command(
-            prepared, "pipe:1", crossfade=crossfade, container="mpegts"
+        out_file = str(Path(tmp_dir) / "mix.mp4")
+        command = renderer.build_command(prepared, out_file, crossfade=crossfade)
+        print("[sample] rendering the mix…", flush=True)
+        with _log_handle(log_path) as log:
+            runner(command, stdin=subprocess.DEVNULL, stdout=log, stderr=log).wait()
+        print(
+            "[sample] opening VLC — it auto-plays and is replayable. Close VLC to finish.",
+            flush=True,
         )
         with _log_handle(log_path) as log:
-            ffmpeg = runner(
-                command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=log
-            )
-            vlc = runner(
-                [vlc_binary or DEFAULT_VLC_BINARY, "-"],
-                stdin=ffmpeg.stdout,
-                stdout=log,
-                stderr=log,
-            )
-            vlc.wait()
+            runner(
+                [vlc_binary or DEFAULT_VLC_BINARY, out_file], stdout=log, stderr=log
+            ).wait()
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)

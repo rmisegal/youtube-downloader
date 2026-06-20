@@ -20,9 +20,11 @@ def _sample_prep(prepare_returns) -> MagicMock:
     return prep
 
 
-def test_run_segments_preps_each_clip_then_stitches_into_one_vlc() -> None:
+def test_run_segments_preps_each_clip_then_renders_file_and_opens_vlc() -> None:
+    import subprocess
+
     renderer = MagicMock()
-    renderer.build_command.return_value = ["ffmpeg", "...", "pipe:1"]
+    renderer.build_command.return_value = ["ffmpeg", "render", "mix.mp4"]
     runner = MagicMock()
     prep = _sample_prep([True, True, True])
     engine = Option1Engine(
@@ -37,21 +39,22 @@ def test_run_segments_preps_each_clip_then_stitches_into_one_vlc() -> None:
 
     # prepare() called ONCE PER SEGMENT (sequential prep — the heavy step).
     assert prep.prepare.call_count == 3
-    # ONE renderer graph built over the prepared (uniform) clips.
+    # ONE renderer graph stitched into a real FILE (not a pipe) so VLC can replay.
     renderer.build_command.assert_called_once()
     args, kwargs = renderer.build_command.call_args
     prepared = args[0]
     assert len(prepared) == 3
     assert all(seg.start == 0.0 for seg in prepared)
-    assert args[1] == "pipe:1"
+    assert args[1].endswith("mix.mp4")  # render target is a file, not pipe:1
     assert kwargs["crossfade"] == 3
-    assert kwargs["container"] == "mpegts"
-    # ffmpeg + exactly one `vlc -` reading the pipe; waits for playback to end.
+    assert "container" not in kwargs  # file output infers its muxer
+    # render ffmpeg (stdin detached) THEN VLC opening the rendered FILE; both waited.
     assert runner.call_count == 2
-    ffmpeg_call, vlc_call = runner.call_args_list
-    assert ffmpeg_call.kwargs.get("stdout") is not None
-    assert vlc_call.args[0] == ["/usr/bin/vlc", "-"]
-    runner.return_value.wait.assert_called_once()
+    render_call, vlc_call = runner.call_args_list
+    assert render_call.kwargs.get("stdin") is subprocess.DEVNULL
+    assert vlc_call.args[0][0] == "/usr/bin/vlc"
+    assert vlc_call.args[0][1].endswith("mix.mp4")
+    assert runner.return_value.wait.call_count == 2
 
 
 def test_run_segments_skips_failed_preps() -> None:
