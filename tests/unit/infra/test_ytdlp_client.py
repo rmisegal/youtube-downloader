@@ -16,6 +16,7 @@ from ytdl.infra.ytdlp_client import YtDlpClient
 from ytdl.shared.errors import (
     InvalidUrlError,
     NetworkError,
+    RateLimitExceededError,
     UnsupportedRequestError,
 )
 
@@ -123,3 +124,23 @@ def test_generic_download_error_translated_to_network() -> None:
         )
         with pytest.raises(NetworkError):
             client.download(URL, OPTS)
+
+
+def test_rate_limit_429_download_error_translated() -> None:
+    """A DownloadError reporting HTTP 429 → RateLimitExceededError."""
+    from yt_dlp.utils import DownloadError
+
+    client = YtDlpClient(FakeGatekeeper())
+    with patch("yt_dlp.YoutubeDL") as mock_ydl:
+        mock_ydl.return_value.extract_info.side_effect = DownloadError(
+            "HTTP Error 429: Too Many Requests"
+        )
+        with pytest.raises(RateLimitExceededError):
+            client.download(URL, OPTS)
+
+    with patch("yt_dlp.YoutubeDL") as mock_ydl:
+        mock_ydl.return_value.extract_info.side_effect = DownloadError(
+            "HTTP Error 429: Too Many Requests"
+        )
+        with pytest.raises(RateLimitExceededError):
+            client.extract_info(URL, OPTS)

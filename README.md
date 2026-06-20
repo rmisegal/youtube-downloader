@@ -100,6 +100,8 @@ Taken verbatim from the argparse definition in
 | `-n`, `--name` | Output base file name (no extension). | video title (`%(title)s`) |
 | `--resolution` | Max video height, e.g. `1080` or `720` (int). | best available |
 | `--sub-lang` | Subtitle language code. | `en` |
+| `--no-playlist` | For a list/mix URL, download only the single video. | off |
+| `--playlist-items` | Download only these items, e.g. `1,3,5` or `1-5` (skips the prompt). | — |
 | `--version` | Print code + config version and exit. | — |
 | `-command`, `--command` | Show the run-command cheat-sheet (commands + examples) and exit. | — |
 
@@ -125,47 +127,80 @@ directory is created automatically if it does not exist (idempotent — no error
 
 All tunables are **config-driven** — there are no hardcoded values in the code. Each tunable is read
 via `ConfigManager.get("a.b", default)`; `src/ytdl/constants.py` holds only true constants. Both
-config files carry `"version": "1.00"`, validated at startup against the supported versions; a
+config files carry `"version": "1.01"`, validated at startup against the supported versions; a
 mismatch raises `ConfigVersionError` (exit code 5).
 
-### `config/setup.json` (version 1.00)
+### `config/setup.json` (version 1.01)
 
 | Key | Purpose |
 |-----|---------|
-| `version` | Config schema version (must be `1.00`). |
 | `paths.output_dir` | Default output folder (`./downloads`). Overridden by `-o`. |
+| `network.js_runtime` | JS runtime for yt-dlp: `auto` (detect deno/node/bun/quickjs on PATH), a specific name, or `none`. |
 | `defaults.resolution` | Default max video height (`null` = best available). Overridden by `--resolution`. |
 | `defaults.sub_lang` | Default subtitle language (`en`). Overridden by `--sub-lang`. |
-| `defaults.modes` | Default modes when none requested (`["video"]`). |
-| `audio.codec` | Audio codec for extraction (`mp3`). |
-| `audio.quality` | Audio bitrate quality (`192`). |
-| `subtitles.format` | Subtitle output format (`srt`). |
-| `subtitles.include_auto` | Include auto-generated subtitles in addition to manual ones (`true`). |
+| `audio.codec` / `audio.quality` | Audio codec (`mp3`) and bitrate (`192`). |
+| `subtitles.format` / `subtitles.include_auto` | Subtitle format (`srt`) and include auto-generated (`true`). |
 | `ffmpeg.location` | FFmpeg locator strategy (`auto` = resolve via `imageio-ffmpeg`). |
 
-### `config/rate_limits.json` (version 1.00)
+### `config/rate_limits.json` (version 1.01) — avoiding YouTube blocks
 
-The same **versioned rate-limit / queue structure** prescribed by the
-`/glb-quality-code-guidlines` is applied here, with **YouTube** as the throttled external service.
+YouTube does not publish hard download quotas; abuse triggers **HTTP 429 (Too Many Requests)** and
+temporary IP/account throttling. This tool defends the account two ways, both fully config-driven:
 
-| Key | Purpose |
-|-----|---------|
-| `version` | Config schema version (must be `1.00`). |
-| `rate_limits.services.youtube.requests_per_minute` | Max YouTube requests per minute (`20`). |
-| `rate_limits.services.youtube.concurrent_max` | Max concurrent YouTube requests (`2`). |
-| `rate_limits.services.youtube.burst_size` | Allowed burst size (`5`). |
-| `rate_limits.services.youtube.burst_window_seconds` | Burst window in seconds (`10`). |
-| `rate_limits.services.youtube.retry_after_seconds` | Backoff before retry (`30`). |
-| `rate_limits.services.youtube.max_retries` | Max retries on transient failure (`3`). |
-| `rate_limits.default.*` | Fallback limits for any unconfigured service. |
-| `queue.max_depth` | Max queued downloads (`100`). |
-| `queue.drain_interval_seconds` | Queue drain interval (`1`). |
-| `queue.timeout_seconds` | Per-item queue timeout (`300`). |
-| `queue.overflow_strategy` | Strategy when the queue is full (`reject_oldest`). |
+**1. In-download pacing** (passed to yt-dlp on every download) under
+`rate_limits.services.youtube.download`:
 
-> **Fathom note:** The Fathom rate-limit keys referenced by the guideline are **N/A** to this project
-> — there is no Fathom integration. The same versioned rate-limit/queue structure is instead applied
-> to YouTube as the throttled external service, satisfying the audit's intent.
+| Key | Purpose | Default |
+|-----|---------|---------|
+| `limit_rate` | Max download bandwidth (→ yt-dlp `ratelimit`). | `5M` |
+| `throttled_rate` | Re-extract if speed drops below this (→ `throttledratelimit`). | `100K` |
+| `sleep_requests_seconds` | Pause between metadata requests (→ `sleep_interval_requests`). | `1.0` |
+| `sleep_interval_seconds` / `max_sleep_interval_seconds` | Randomized pause before each download (→ `sleep_interval` / `max_sleep_interval`). | `3.0` / `8.0` |
+| `concurrent_fragments` | Parallel fragment downloads (→ `concurrent_fragment_downloads`). | `1` |
+| `retries` / `fragment_retries` | yt-dlp retry counts. | `10` / `10` |
+
+**2. Persistent quota ledger** (`UsageTracker`, enforced in the gatekeeper before every request,
+counted across runs in `config/.usage_state.json`):
+
+| Key | Purpose | Default |
+|-----|---------|---------|
+| `rate_limits.services.youtube.requests_per_minute` | Per-minute request cap. | `10` |
+| `rate_limits.services.youtube.requests_per_hour` | Per-hour cap. | `200` |
+| `rate_limits.services.youtube.requests_per_day` | Per-day cap. | `1000` |
+| `rate_limits.services.youtube.requests_per_month` | Per-month cap. | `10000` |
+| `rate_limits.services.youtube.concurrent_max` | Max concurrent requests. | `1` |
+
+When a cap would be exceeded — or YouTube returns 429 — the tool stops with a clear
+`RateLimitExceededError` (**exit code 6**) instead of hammering YouTube and risking a block. Queue
+keys (`queue.max_depth`, `drain_interval_seconds`, `timeout_seconds`, `overflow_strategy`) are unchanged.
+
+> Tune these in `config/rate_limits.json` — raise caps/bandwidth at your own risk, or lower
+> them (e.g. `sleep_interval_seconds: 60`, `max_sleep_interval_seconds: 120`) for bulk jobs to stay
+> well under YouTube's radar.
+
+> **Fathom note:** The Fathom rate-limit keys referenced by the guideline are **N/A** here; the same
+> versioned rate-limit/queue structure is applied to YouTube as the throttled external service.
+
+---
+
+## Playlists & mixes
+
+If the URL belongs to a playlist or mix (`...&list=...` or `/playlist?list=...`), the tool first shows
+the **number of available items** and asks whether to download **all**, **select** specific items, or
+**only this video**. For "select", it lists the entries numbered and you enter the numbers
+comma-separated (e.g. `1,3,5`; ranges like `2-4` work too).
+
+Non-interactively (piped/CI), or with flags, no prompt appears:
+- `--no-playlist` → only the single video,
+- `--playlist-items 1,3,5` → just those items,
+- otherwise a `watch?v=...&list=...` URL defaults to the single video and a bare playlist URL to all.
+
+## JavaScript runtime
+
+yt-dlp needs a JS runtime to extract some YouTube formats. The tool auto-detects **deno / node / bun /
+quickjs** on your PATH and passes it to yt-dlp (`network.js_runtime: "auto"`), which removes the
+"No supported JavaScript runtime could be found" warning. Installing one (e.g. Node.js) is recommended
+for full format availability.
 
 ---
 
@@ -232,6 +267,7 @@ Deterministic, matching the constants in [`src/ytdl/cli/main.py`](src/ytdl/cli/m
 | `3` | Network failure after retries. |
 | `4` | Unsupported request. |
 | `5` | Configuration version mismatch. |
+| `6` | Rate limit / quota reached (configured cap or YouTube HTTP 429) — stopped to protect the account. |
 
 ---
 
@@ -239,8 +275,6 @@ Deterministic, matching the constants in [`src/ytdl/cli/main.py`](src/ytdl/cli/m
 
 The following are **explicitly out of scope for v1.00** and listed here only for direction:
 
-- **Batch / playlist CLI surface** — the engine and download queue already support multiple URLs;
-  only a CLI mode is missing.
 - **Subtitle translation** and multi-language subtitle download.
 - **GPU-accelerated transcription** of downloaded audio. If added, it would integrate
   [`youtube-transcript-api`](https://pypi.org/project/youtube-transcript-api/) and, for local Whisper

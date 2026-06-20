@@ -13,6 +13,7 @@ import logging
 import sys
 
 from ytdl.cli.args import build_parser
+from ytdl.cli.playlist import is_playlist_url, resolve_playlist_choice
 from ytdl.cli.usage import commands_text
 from ytdl.sdk.sdk import YoutubeDownloaderSDK
 from ytdl.shared.config import ConfigManager
@@ -20,6 +21,7 @@ from ytdl.shared.errors import (
     ConfigVersionError,
     InvalidUrlError,
     NetworkError,
+    RateLimitExceededError,
     UnsupportedRequestError,
 )
 
@@ -30,6 +32,7 @@ EXIT_INVALID_URL: int = 2
 EXIT_NETWORK_ERROR: int = 3
 EXIT_UNSUPPORTED: int = 4
 EXIT_CONFIG_VERSION: int = 5
+EXIT_RATE_LIMIT: int = 6  # configured quota hit or YouTube HTTP 429
 EXIT_USAGE: int = 2  # argparse/missing-url usage error
 
 _LOGGER = logging.getLogger("ytdl.cli")
@@ -68,11 +71,23 @@ def _print_version() -> int:
     return EXIT_SUCCESS
 
 
+def _resolve_playlist(sdk: YoutubeDownloaderSDK, args) -> dict:  # noqa: ANN001
+    """Decide playlist handling from flags, or prompt the user when applicable."""
+    if args.no_playlist:
+        return {"no_playlist": True, "playlist_items": None}
+    if args.playlist_items:
+        return {"no_playlist": False, "playlist_items": args.playlist_items}
+    if is_playlist_url(args.url):
+        return resolve_playlist_choice(sdk, args.url)
+    return {"no_playlist": False, "playlist_items": None}
+
+
 def _run_download(args) -> int:  # noqa: ANN001 - argparse.Namespace
     """Delegate the download to the SDK and map exceptions to exit codes."""
     _LOGGER.info("phase=resolve url=%s", args.url)
     sdk = YoutubeDownloaderSDK()
     try:
+        choice = _resolve_playlist(sdk, args)
         result = sdk.download(
             args.url,
             video=args.video,
@@ -82,9 +97,13 @@ def _run_download(args) -> int:  # noqa: ANN001 - argparse.Namespace
             name=args.name,
             resolution=args.resolution,
             sub_lang=args.sub_lang,
+            no_playlist=choice["no_playlist"],
+            playlist_items=choice["playlist_items"],
         )
     except InvalidUrlError as exc:
         return _fail("Invalid or unavailable URL", exc, EXIT_INVALID_URL)
+    except RateLimitExceededError as exc:
+        return _fail("Rate limit / quota reached (protecting your account)", exc, EXIT_RATE_LIMIT)
     except NetworkError as exc:
         return _fail("Network failure after retries", exc, EXIT_NETWORK_ERROR)
     except UnsupportedRequestError as exc:

@@ -17,9 +17,18 @@ from typing import Any
 from ytdl.shared.errors import (
     InvalidUrlError,
     NetworkError,
+    RateLimitExceededError,
     UnsupportedRequestError,
 )
 from ytdl.shared.gatekeeper import ApiGatekeeper
+
+# Substrings (lower-cased) indicating YouTube is rate-limiting us (HTTP 429).
+# Surfacing this distinctly lets the caller stop before the account is blocked.
+_RATE_LIMIT_HINTS: tuple[str, ...] = (
+    "http error 429",
+    "too many requests",
+    "429",
+)
 
 # Substrings (lower-cased) in a yt-dlp error message that indicate the URL itself
 # is invalid/unavailable rather than a transient network problem.
@@ -103,6 +112,8 @@ def _translate_download_error(exc: Exception) -> Exception:
     """Map a yt-dlp DownloadError/ExtractorError to a domain exception."""
     message = str(exc)
     lowered = message.lower()
+    if any(hint in lowered for hint in _RATE_LIMIT_HINTS):
+        return RateLimitExceededError(message)
     if any(hint in lowered for hint in _INVALID_URL_HINTS):
         return InvalidUrlError(message)
     return NetworkError(message)

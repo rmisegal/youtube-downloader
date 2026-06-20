@@ -7,6 +7,10 @@ cookies.txt
 # Downloads (runtime output)
 downloads/
 
+# Persistent rate-limit usage ledger (runtime state)
+config/.usage_state.json
+.usage_state.json
+
 # Python
 __pycache__/
 *.pyc

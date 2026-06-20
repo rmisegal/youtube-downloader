@@ -319,6 +319,12 @@ material ambiguity.
 **Coverage: 44/44 atomic demands mapped (100%).**
 
 > **Changelog**
+> - **1.02 (2026-06-20):** Post-release hardening. (a) JS runtime auto-detect (`network.js_runtime`)
+>   passed to yt-dlp `js_runtimes` to clear the runtime warning; (b) interactive playlist selection
+>   (shows available count; all/select/only-this; `--no-playlist`, `--playlist-items`); (c) YouTube
+>   ban-avoidance — config-driven throttle opts (limit-rate/sleep/concurrent-fragments) + persistent
+>   per-minute/hour/day/month quota ledger enforced in the gatekeeper, plus HTTP 429 → exit 6. Config
+>   bumped to 1.01; code to 1.01.
 > - **1.01 (2026-06-20):** Audit back-propagation (`/new:todo-vs-prd`). Added R44 (consume
 >   `YTDL_PROXY`/`YTDL_COOKIES_FILE` from env) as Phase 4.7 + gate; enumerated all four exit-code
 >   conditions in Phase 7.4 + gate (PRD §3.3).

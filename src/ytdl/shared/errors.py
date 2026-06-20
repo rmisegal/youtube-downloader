@@ -23,3 +23,9 @@ class NetworkError(YtdlError):
 
 class UnsupportedRequestError(YtdlError):
     """Raised when yt-dlp cannot handle the requested URL/extractor."""
+
+
+class RateLimitExceededError(YtdlError):
+    """Raised when a configured request quota (minute/hour/day/month) is hit,
+    or when YouTube returns HTTP 429. Stopping here protects the account from
+    being throttled/blocked by YouTube."""

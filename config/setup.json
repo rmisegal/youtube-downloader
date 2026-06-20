@@ -1,7 +1,10 @@
 {
-  "version": "1.00",
+  "version": "1.01",
   "paths": {
     "output_dir": "./downloads"
+  },
+  "network": {
+    "js_runtime": "auto"
   },
   "defaults": {
     "resolution": null,

@@ -35,9 +35,13 @@ class BaseDownloader:
         self,
         config: ConfigManager,
         ffmpeg: FfmpegLocator | None = None,
+        extra_opts: dict[str, Any] | None = None,
     ) -> None:
         self._config = config
         self._ffmpeg = ffmpeg if ffmpeg is not None else FfmpegLocator()
+        # Cross-cutting yt-dlp opts injected by the SDK (throttle/ban-avoidance
+        # pacing and the detected JS runtime). Applied to every download mode.
+        self._extra_opts = dict(extra_opts or {})
 
     def build_base_opts(self, output_dir: str, name: str | None) -> dict[str, Any]:
         """Return yt-dlp options common to every download mode.
@@ -55,6 +59,9 @@ class BaseDownloader:
             "outtmpl": str(Path(output_dir) / tail),
             "ffmpeg_location": self._ffmpeg.exe(),
         }
+        # Throttle/JS-runtime opts injected by the SDK; base essentials win.
+        for key, value in self._extra_opts.items():
+            opts.setdefault(key, value)
         proxy = os.environ.get(ENV_PROXY)
         if proxy:
             opts["proxy"] = proxy

@@ -25,6 +25,7 @@ from typing import Any
 
 from ytdl.shared.queue import DownloadQueue
 from ytdl.shared.rate_limit import RateLimiter
+from ytdl.shared.usage import UsageTracker
 
 # Fallback-only defaults (used solely when a config key is absent).
 _DEFAULT_MAX_RETRIES = 3
@@ -45,6 +46,7 @@ class ApiGatekeeper:
         retry_after_seconds: float = _DEFAULT_RETRY_AFTER_SECONDS,
         sleep_fn: Callable[[float], None] = time.sleep,
         logger: logging.Logger | None = None,
+        usage: UsageTracker | None = None,
     ) -> None:
         """Build a gatekeeper.
 
@@ -62,6 +64,7 @@ class ApiGatekeeper:
         self._retry_after = float(retry_after_seconds)
         self._sleep_fn = sleep_fn
         self._log = logger or _LOGGER
+        self._usage = usage
 
     def execute(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """Run ``func`` under rate control with retry/backoff and logging.
@@ -73,6 +76,11 @@ class ApiGatekeeper:
         attempts fail.
         """
         name = getattr(func, "__name__", repr(func))
+        # Persistent quota check FIRST (per minute/hour/day/month). Raises
+        # RateLimitExceededError outside the retry loop so a quota stop is never
+        # retried into a YouTube ban.
+        if self._usage is not None:
+            self._usage.reserve()
         if not self._rate_limiter.allow():
             self._log.info("Rate limit reached; queuing call %s", name)
             self._queue.enqueue(self._request(func, args, kwargs))

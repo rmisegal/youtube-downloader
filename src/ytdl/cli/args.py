@@ -55,6 +55,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Subtitle language code. Default: en.",
     )
     parser.add_argument(
+        "--no-playlist",
+        dest="no_playlist",
+        action="store_true",
+        help="If the URL is part of a playlist, download only the single video.",
+    )
+    parser.add_argument(
+        "--playlist-items",
+        dest="playlist_items",
+        default=None,
+        help="Download only these playlist items, e.g. '1,3,5' or '1-5' (skips the prompt).",
+    )
+    parser.add_argument(
         "--version",
         action="store_true",
         help="Print code + config version and exit.",

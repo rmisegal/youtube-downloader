@@ -1,9 +1,9 @@
 """YoutubeDownloaderSDK: the SINGLE entry point for all business logic (Rule 1).
 
 External layers (CLI, future GUI/REST) import only this class. It wires the full
-stack from config, then exposes :meth:`download` which resolves the requested
-modes, composes ONE merged yt-dlp opts dict (fetch-once + union of
-post-processors, PRD §5), and performs a single download pass.
+stack from config (throttle pacing, JS runtime, persistent quota ledger), then
+exposes :meth:`download` (fetch-once + union of post-processors, PRD §5) and
+:meth:`probe_playlist` for interactive playlist selection.
 """
 
 from __future__ import annotations
@@ -14,18 +14,15 @@ from typing import Any
 from ytdl.constants import MODE_AUDIO, MODE_SUBS, MODE_VIDEO
 from ytdl.infra.ytdlp_client import YtDlpClient
 from ytdl.sdk.compose import compose_opts
+from ytdl.sdk.wiring import build_client, build_extra_opts
 from ytdl.services.audio import AudioDownloader
 from ytdl.services.base import BaseDownloader
 from ytdl.services.metadata import MetadataService
 from ytdl.services.subtitles import SubtitleDownloader
 from ytdl.services.video import VideoDownloader
 from ytdl.shared.config import ConfigManager
-from ytdl.shared.gatekeeper import ApiGatekeeper
-from ytdl.shared.queue import DownloadQueue
-from ytdl.shared.rate_limit import RateLimiter
 from ytdl.shared.version import __version__
 
-_YT_LIMITS_KEY = "rate_limits.services.youtube"
 _OUTPUT_DIR_KEY = "paths.output_dir"
 _RESOLUTION_KEY = "defaults.resolution"
 _SUB_LANG_KEY = "defaults.sub_lang"
@@ -41,35 +38,38 @@ class YoutubeDownloaderSDK:
         config: ConfigManager | None = None,
         rate_config: ConfigManager | None = None,
     ) -> None:
-        """Wire the stack from config; allow injection for tests.
-
-        Args:
-            client: Optional pre-built (mock) :class:`YtDlpClient`. When ``None``
-                the full gatekeeper/rate-limit/queue stack is built from config.
-            config: ``setup.json`` manager (defaults to repo ``config/``).
-            rate_config: ``rate_limits.json`` manager (defaults to repo config).
-        """
+        """Wire the stack from config; allow injection of a (mock) client/config for tests."""
         self._config = config or ConfigManager(file_name="setup.json")
         self._rate_config = rate_config or ConfigManager(file_name="rate_limits.json")
-        self._client = client or self._build_client()
+        self._client = client or build_client(self._rate_config)
+        extra = build_extra_opts(self._config, self._rate_config)
         self._video = VideoDownloader(self._config)
         self._audio = AudioDownloader(self._config)
         self._subs = SubtitleDownloader(self._config)
-        self._base = BaseDownloader(self._config)
+        self._base = BaseDownloader(self._config, extra_opts=extra)
         self._metadata = MetadataService(self._client)
 
-    def _build_client(self) -> YtDlpClient:
-        """Assemble RateLimiter + DownloadQueue + gatekeeper + client."""
-        limits = self._rate_config.get(_YT_LIMITS_KEY, {})
-        limiter = RateLimiter(limits)
-        queue = DownloadQueue(self._rate_config)
-        gatekeeper = ApiGatekeeper(
-            limiter,
-            queue,
-            max_retries=limits.get("max_retries", 3),
-            retry_after_seconds=limits.get("retry_after_seconds", 30),
-        )
-        return YtDlpClient(gatekeeper)
+    def probe_playlist(self, url: str) -> dict[str, Any] | None:
+        """Flat-resolve ``url``; return playlist info or ``None`` if it is a single video.
+
+        Returns ``{"title", "count", "entries": [{"index", "id", "title"}, ...]}``.
+        ``count`` is the total number of AVAILABLE items in the list.
+        """
+        opts = dict(self._base.build_base_opts(".", None))
+        opts.update({"extract_flat": "in_playlist", "quiet": True, "no_warnings": True})
+        info = self._client.extract_info(url, opts)
+        entries = list(info.get("entries") or [])
+        if info.get("_type") != "playlist" and not entries:
+            return None
+        items = [
+            {"index": i, "id": e.get("id"), "title": e.get("title") or e.get("id") or f"item {i}"}
+            for i, e in enumerate(entries, start=1)
+        ]
+        return {
+            "title": info.get("title"),
+            "count": info.get("playlist_count") or len(items),
+            "entries": items,
+        }
 
     def download(
         self,
@@ -82,12 +82,14 @@ class YoutubeDownloaderSDK:
         name: str | None = None,
         resolution: int | None = None,
         sub_lang: str | None = None,
+        no_playlist: bool = False,
+        playlist_items: str | None = None,
     ) -> dict[str, Any]:
         """Download any combination of modes in a single fetch-once pass.
 
-        Defaults to video-only when no mode flag is truthy (PRD §3.1). All three
-        modes are independent toggles and fully combinable. Returns a small dict
-        describing what was produced.
+        Defaults to video-only when no mode flag is truthy (PRD §3.1). ``no_playlist``
+        restricts a list URL to the single video; ``playlist_items`` (e.g. "1,3,5")
+        selects specific entries. Returns a small dict describing what was produced.
         """
         if not (video or audio or subs):
             video = True
@@ -106,6 +108,10 @@ class YoutubeDownloaderSDK:
             resolution=resolution,
             sub_lang=sub_lang,
         )
+        if no_playlist:
+            merged["noplaylist"] = True
+        if playlist_items:
+            merged["playlist_items"] = playlist_items
         self._client.download(url, merged)
 
         modes = [

@@ -49,6 +49,8 @@ def test_all_flags_parse_and_delegate() -> None:
         name="sample",
         resolution=720,
         sub_lang="he",
+        no_playlist=False,
+        playlist_items=None,
     )
 
 
@@ -75,6 +77,8 @@ def test_default_no_flags_passes_all_false() -> None:
         "name": None,
         "resolution": None,
         "sub_lang": None,
+        "no_playlist": False,
+        "playlist_items": None,
     }
 
 
