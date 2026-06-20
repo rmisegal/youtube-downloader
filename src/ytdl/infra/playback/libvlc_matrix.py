@@ -68,7 +68,7 @@ class LibVlcPlayerMatrix:
         media = self._vlc.Media(path)
         player.set_media(media)
         player.set_time(int(self.target_start_time * 1000))
-        player.set_volume(0)
+        player.audio_set_volume(0)
 
     def _mix_point(self, source_duration: float) -> float:
         """Resolve the mix-out position (explicit override or natural end)."""
@@ -88,8 +88,8 @@ class LibVlcPlayerMatrix:
         step = self.crossfade / _RAMP_STEPS
         for i in range(1, _RAMP_STEPS + 1):
             fraction = i / _RAMP_STEPS
-            active.set_volume(int(_MAX_VOLUME * (1 - fraction)))
-            nxt.set_volume(int(_MAX_VOLUME * fraction))
+            active.audio_set_volume(int(_MAX_VOLUME * (1 - fraction)))
+            nxt.audio_set_volume(int(_MAX_VOLUME * fraction))
             self._clock()
             self._sleep(step)
 
@@ -100,7 +100,7 @@ class LibVlcPlayerMatrix:
         the audio is crossfaded over ``crossfade`` seconds while ``nxt`` starts;
         afterwards ``active`` stops and ``nxt`` becomes the new active deck.
         """
-        active.set_volume(_MAX_VOLUME)
+        active.audio_set_volume(_MAX_VOLUME)
         active.play()
         self._wait_for_mix(active, self._mix_point(source_duration))
         self._ramp_audio(active, nxt)

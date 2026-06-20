@@ -21,10 +21,15 @@ def probe_duration(
     runner: Callable[..., Any] = subprocess.run,
 ) -> float:
     """Return ``path``'s duration in seconds (0.0 if it cannot be determined)."""
+    # Force UTF-8 with replacement: ffmpeg stderr (banner, filenames) often
+    # contains bytes that are not decodable in the Windows console code page
+    # (cp1252), which otherwise crashes subprocess's text-mode reader threads.
     result = runner(
         [ffmpeg_exe, "-i", str(path)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     match = _DURATION_RE.search(getattr(result, "stderr", "") or "")
     if not match:

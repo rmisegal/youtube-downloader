@@ -37,7 +37,7 @@ class FakePlayer:
     def set_time(self, ms: int) -> None:
         self.set_time_calls.append(ms)
 
-    def set_volume(self, vol: int) -> None:
+    def audio_set_volume(self, vol: int) -> None:
         self.volume_calls.append(vol)
 
     def play(self) -> None:
