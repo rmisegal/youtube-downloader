@@ -37,8 +37,19 @@
     "loop": true
   },
   "render": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30,
+    "video_preset": "ultrafast",
     "video_codec": "libx264",
     "audio_codec": "aac",
     "container": "mp4"
+  },
+  "logging": {
+    "dir": "logs",
+    "app_file": "ytdl.log",
+    "subprocess_file": "ffmpeg.log",
+    "max_bytes": 1048576,
+    "console_level": "ERROR"
   }
 }

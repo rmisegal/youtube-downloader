@@ -16,7 +16,7 @@ from ytdl.services.mixer.segment import MixSegment
 # are scaled+padded to one common canvas regardless of per-member resolution.
 _FPS = 30
 _SAR = "1"
-_CANVAS = (1920, 1080)
+_CANVAS = (1280, 720)
 
 
 def _fmt(value: float) -> str:

@@ -71,6 +71,7 @@ def run_sample(args) -> int:  # noqa: ANN001 - argparse.Namespace
         print("Error: --dir is required with --sample-play.", file=sys.stderr)
         return EXIT_USAGE
     _LOGGER.info("phase=sample dir=%s mode=%s play_for_sec=%s", args.dir, args.mode, args.play_for_sec)
+    print(f"Sampling {args.dir} — preparing clips (logs in logs/), Ctrl+C to stop")
     sdk = YoutubeDownloaderSDK()
     try:
         result = sdk.sample_play(args.dir, play_for_sec=args.play_for_sec, mode=args.mode)
@@ -87,6 +88,7 @@ def run_sample(args) -> int:  # noqa: ANN001 - argparse.Namespace
 def run_playlist(args) -> int:  # noqa: ANN001 - argparse.Namespace
     """Run a declarative YAML playlist; map exceptions to exit codes."""
     _LOGGER.info("phase=playlist file=%s", args.playlist_file)
+    print(f"Playing playlist {args.playlist_file} — preparing clips (logs in logs/), Ctrl+C to stop")
     sdk = YoutubeDownloaderSDK()
     try:
         result = sdk.play_playlist(args.playlist_file)

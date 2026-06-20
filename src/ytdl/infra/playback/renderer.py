@@ -17,8 +17,8 @@ from ytdl.infra.playback.duration import probe_duration
 from ytdl.infra.playback.renderer_graph import (
     build_audio_graph,
     build_video_graph,
-    bump_indices,
 )
+from ytdl.infra.playback.renderer_leading import leading_command
 from ytdl.services.mixer.segment import MixSegment
 
 
@@ -36,14 +36,19 @@ class MixRenderer:
         runner: Callable[..., Any] = subprocess.run,
         duration_fn: Callable[..., float] = probe_duration,
         config: Any = None,
+        log_path: str | None = None,
     ) -> None:
         self._ffmpeg = ffmpeg or FfmpegLocator()
         self._runner = runner
         self._duration_fn = duration_fn
+        self._log_path = log_path
         get = config.get if config is not None else (lambda _k, default=None: default)
         self._video_codec = get("render.video_codec", "libx264")
         self._audio_codec = get("render.audio_codec", "aac")
         self._container = get("render.container", "mp4")
+        self._canvas = (get("render.width", 1280), get("render.height", 720))
+        self._fps = get("render.fps", 30)
+        self._preset = get("render.video_preset", "ultrafast")
 
     def _durations(self, segments: Sequence[MixSegment]) -> list[float]:
         """Resolve each segment's play window, probing when ``play_seconds`` is None."""
@@ -64,7 +69,7 @@ class MixRenderer:
 
     def _codec_out(self, output_path: str, fmt: str | None = None) -> list[str]:
         """Codec flags (+ optional ``-f`` muxer) and the output target."""
-        out = ["-c:v", self._video_codec, "-c:a", self._audio_codec]
+        out = ["-c:v", self._video_codec, "-preset", self._preset, "-c:a", self._audio_codec]
         if fmt:
             out += ["-f", fmt]
         out.append(str(output_path))
@@ -84,7 +89,7 @@ class MixRenderer:
         ``output_path="pipe:1"`` to stream into ``vlc -``).
         """
         durations = self._durations(segments)
-        vsteps, vlabel = build_video_graph(segments, durations, crossfade)
+        vsteps, vlabel = build_video_graph(segments, durations, crossfade, self._canvas, self._fps)
         asteps, alabel = build_audio_graph(segments, durations, crossfade)
         graph = ";".join(vsteps + asteps)
         return [
@@ -110,40 +115,9 @@ class MixRenderer:
         crossfade: float,
     ) -> list[str]:
         """Render with a leading video (``-an``) or leading audio (``-vn``) master."""
-        durations = self._durations(segments)
-        # Leading is input 0, so member graph indices are bumped by +1.
-        if leading_kind == "video":
-            asteps, alabel = self._shifted(build_audio_graph, segments, durations, crossfade)
-            graph = ";".join(asteps)  # leading picture kept as-is; only audio mixed
-            lead_in = ["-an", "-i", leading_path]
-            return self._assemble(lead_in, segments, durations, graph, "0:v", f"[{alabel}]", output_path)
-        # leading_kind == "audio": discard the leading picture, keep its audio.
-        vsteps, vlabel = self._shifted(build_video_graph, segments, durations, crossfade)
-        graph = ";".join(vsteps)
-        lead_in = ["-vn", "-i", leading_path]
-        return self._assemble(lead_in, segments, durations, graph, f"[{vlabel}]", "0:a", output_path)
-
-    @staticmethod
-    def _shifted(builder, segments, durations, crossfade):  # type: ignore[no-untyped-def]
-        """Build a member graph whose input indices start at 1 (leading is 0)."""
-        steps, label = builder(segments, durations, crossfade)
-        return [bump_indices(s, len(segments)) for s in steps], label
-
-    def _assemble(self, lead_in, segments, durations, graph, vmap, amap, output_path):  # type: ignore[no-untyped-def]
-        """Combine leading input, members, graph and pre-formatted maps into argv."""
-        return [
-            self._ffmpeg.exe(),
-            "-y",
-            *lead_in,
-            *self._inputs(segments, durations),
-            "-filter_complex",
-            graph,
-            "-map",
-            vmap,
-            "-map",
-            amap,
-            *self._codec_out(output_path),
-        ]
+        return leading_command(
+            self, segments, leading_path, leading_kind, output_path, crossfade=crossfade
+        )
 
     def render(
         self,
@@ -163,5 +137,9 @@ class MixRenderer:
             )
         else:
             command = self.build_command(segments, output_path, crossfade=crossfade)
-        self._runner(command)
+        if self._log_path:
+            with open(self._log_path, "a", encoding="utf-8") as handle:
+                self._runner(command, stderr=handle)
+        else:
+            self._runner(command, stderr=subprocess.DEVNULL)
         return output_path

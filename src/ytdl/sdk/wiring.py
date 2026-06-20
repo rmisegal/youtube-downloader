@@ -17,11 +17,13 @@ from ytdl.infra.playback.vlc_locator import VlcLocator
 from ytdl.infra.ytdlp_client import YtDlpClient
 from ytdl.services.mixer.mixer_service import MixerService
 from ytdl.services.mixer.playlist_engine import PlaylistEngine
+from ytdl.services.mixer.sample_prep import SamplePrep
 from ytdl.services.mixer.sample_runner import SampleRunner
 from ytdl.services.mixer.sampler import Sampler
 from ytdl.services.playlist.runner import PlaylistRunner
 from ytdl.shared.config import ConfigManager
 from ytdl.shared.gatekeeper import ApiGatekeeper
+from ytdl.shared.logsetup import subprocess_log_path
 from ytdl.shared.queue import DownloadQueue
 from ytdl.shared.rate_limit import RateLimiter
 from ytdl.shared.throttle import ThrottlePolicy
@@ -95,11 +97,13 @@ def build_sampler(config: ConfigManager) -> Sampler:
 
 def build_sample_runner(config: ConfigManager) -> SampleRunner:
     """Assemble the ``--sample-play`` orchestrator (Sampler + VLC + both engines)."""
+    log = str(subprocess_log_path(config))
+    sample_prep = SamplePrep(config=config, log_path=log)
     return SampleRunner(
         config,
         sampler=build_sampler(config),
         vlc_locator=VlcLocator(),
-        option1=Option1Engine(),
+        option1=Option1Engine(sample_prep=sample_prep, log_path=log),
         option2=Option2Engine(),
     )
 
@@ -109,11 +113,13 @@ def build_playlist_runner(config: ConfigManager, downloader: Any) -> PlaylistRun
 
     ``downloader`` is the SDK itself, used for rate-limited URL member downloads.
     """
+    log = str(subprocess_log_path(config))
+    sample_prep = SamplePrep(config=config, log_path=log)
     return PlaylistRunner(
         config,
         vlc_locator=VlcLocator(),
-        option1=Option1Engine(),
+        option1=Option1Engine(sample_prep=sample_prep, log_path=log),
         option2=Option2Engine(),
-        renderer=MixRenderer(config=config),
+        renderer=MixRenderer(config=config, log_path=log),
         downloader=downloader,
     )

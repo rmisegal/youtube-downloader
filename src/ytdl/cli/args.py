@@ -69,6 +69,13 @@ def build_parser() -> argparse.ArgumentParser:
     _add_mixer_args(parser)
     _add_playlist_args(parser)
     parser.add_argument(
+        "-v",
+        "--verbose",
+        dest="verbose",
+        action="store_true",
+        help="Show INFO-level progress on the console (default: errors only).",
+    )
+    parser.add_argument(
         "--version",
         action="store_true",
         help="Print code + config version and exit.",

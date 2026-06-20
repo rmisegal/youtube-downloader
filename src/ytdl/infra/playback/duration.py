@@ -31,8 +31,35 @@ def probe_duration(
         encoding="utf-8",
         errors="replace",
     )
-    match = _DURATION_RE.search(getattr(result, "stderr", "") or "")
+    return _duration_from_stderr(getattr(result, "stderr", "") or "")
+
+
+def _duration_from_stderr(stderr: str) -> float:
+    """Parse ``Duration: HH:MM:SS.cc`` from ffmpeg stderr (0.0 if absent)."""
+    match = _DURATION_RE.search(stderr)
     if not match:
         return 0.0
     hours, minutes, seconds, centis = (int(g) for g in match.groups())
     return hours * 3600 + minutes * 60 + seconds + centis / 100
+
+
+def probe_media(
+    path: str,
+    ffmpeg_exe: str,
+    runner: Callable[..., Any] = subprocess.run,
+) -> tuple[float, bool]:
+    """Return ``(duration_seconds, has_audio)`` parsed from ``ffmpeg -i`` stderr.
+
+    ``has_audio`` is ``True`` when the stderr report lists an ``Audio:`` stream.
+    Uses the same UTF-8-with-replacement decoding as :func:`probe_duration` so
+    undecodable console-codepage bytes never crash the reader threads.
+    """
+    result = runner(
+        [ffmpeg_exe, "-i", str(path)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    stderr = getattr(result, "stderr", "") or ""
+    return _duration_from_stderr(stderr), "Audio:" in stderr

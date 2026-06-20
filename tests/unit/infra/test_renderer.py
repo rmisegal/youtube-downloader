@@ -77,8 +77,8 @@ def test_every_input_normalized_to_common_canvas() -> None:
     segs = [MixSegment(path="a.mp4", play_seconds=5.0), MixSegment(path="b.mp4", play_seconds=5.0)]
     cmd = _renderer().build_command(segs, "out.mp4", crossfade=1)
     graph = cmd[cmd.index("-filter_complex") + 1]
-    assert graph.count("scale=1920:1080:force_original_aspect_ratio=decrease") == 2
-    assert graph.count("pad=1920:1080") == 2
+    assert graph.count("scale=1280:720:force_original_aspect_ratio=decrease") == 2
+    assert graph.count("pad=1280:720") == 2
     assert graph.count("setsar=1") == 2
     assert graph.count("fps=30") == 2
     assert graph.count("format=yuv420p") == 2

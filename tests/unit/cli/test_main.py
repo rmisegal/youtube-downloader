@@ -87,6 +87,7 @@ def test_version_prints_code_and_config(capsys) -> None:
     fake_config = MagicMock()
     fake_config.version = "1.00"
     with patch.object(cli, "ConfigManager", return_value=fake_config), \
+         patch.object(cli.logsetup, "configure_logging"), \
          patch.object(cli.YoutubeDownloaderSDK, "version", return_value="1.00"):
         code = cli.main(["--version"])
     out = capsys.readouterr().out

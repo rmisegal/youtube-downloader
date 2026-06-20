@@ -30,6 +30,7 @@ from ytdl.cli.playlist import is_playlist_url, resolve_playlist_choice
 from ytdl.cli.run import _fail, run_mix, run_playlist, run_sample
 from ytdl.cli.usage import commands_text
 from ytdl.sdk.sdk import YoutubeDownloaderSDK
+from ytdl.shared import logsetup
 from ytdl.shared.config import ConfigManager
 from ytdl.shared.errors import (
     ConfigVersionError,
@@ -66,12 +67,10 @@ def _configure_io() -> None:
                 reconfigure(encoding="utf-8")
 
 
-def _configure_logging() -> None:
-    """Set up concise, per-phase structured progress logging (non-interactive)."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-        stream=sys.stderr,
+def _configure_logging(verbose: bool) -> None:
+    """Set up clean logging: rotating file (DEBUG) + console (ERROR / INFO if -v)."""
+    logsetup.configure_logging(
+        ConfigManager(file_name="setup.json"), verbose=verbose
     )
 
 
@@ -138,8 +137,8 @@ def _run_download(args) -> int:  # noqa: ANN001 - argparse.Namespace
 def main(argv: list[str] | None = None) -> int:
     """Parse args and delegate to the SDK; return a deterministic exit code."""
     _configure_io()
-    _configure_logging()
     args = build_parser().parse_args(argv)
+    _configure_logging(args.verbose)
     if args.command:
         return _print_commands()
     if args.version:

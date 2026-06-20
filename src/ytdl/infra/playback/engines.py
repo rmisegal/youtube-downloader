@@ -10,28 +10,21 @@ mix-out point = ``duration − crossfade``), and configure the underlying engine
 from __future__ import annotations
 
 import subprocess
-import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 
 from ytdl.infra.ffmpeg import FfmpegLocator
 from ytdl.infra.playback.duration import probe_duration
-from ytdl.infra.playback.libvlc_matrix import LibVlcPlayerMatrix
+from ytdl.infra.playback.option2_engine import Option2Engine
 from ytdl.infra.playback.renderer import MixRenderer
-from ytdl.infra.playback.stream_server import DEFAULT_VLC_BINARY, StreamServer
+from ytdl.infra.playback.sample_stream import stream_samples
+from ytdl.infra.playback.stream_server import StreamServer
+from ytdl.services.mixer.sample_prep import SamplePrep
 from ytdl.services.mixer.segment import MixSegment
 
-
-def _segment_mix_point(
-    seg: MixSegment, duration_fn: Callable[..., float], ffmpeg: FfmpegLocator
-) -> float:
-    """Mix-out point of ``seg`` = ``start`` + play window (probed if ``None``)."""
-    play = seg.play_seconds
-    if play is None:
-        play = duration_fn(seg.path, ffmpeg.exe())
-    return seg.start + play
+# Re-exported so callers keep importing both engines from this module.
+__all__ = ["Option1Engine", "Option2Engine"]
 
 
 class Option1Engine:
@@ -44,12 +37,16 @@ class Option1Engine:
         duration_fn: Callable[..., float] = probe_duration,
         renderer: MixRenderer | None = None,
         runner: Callable[..., Any] = subprocess.Popen,
+        sample_prep: SamplePrep | None = None,
+        log_path: str | None = None,
     ) -> None:
         self._ffmpeg = ffmpeg or FfmpegLocator()
         self._stream = stream_server or StreamServer(self._ffmpeg)
         self._duration_fn = duration_fn
         self._renderer = renderer or MixRenderer(self._ffmpeg)
         self._runner = runner
+        self._sample_prep = sample_prep or SamplePrep(ffmpeg=self._ffmpeg, log_path=log_path)
+        self._log_path = log_path
 
     def run(
         self,
@@ -81,86 +78,19 @@ class Option1Engine:
         crossfade: float,
         vlc_binary: str | None = None,
     ) -> None:
-        """Stream ONE continuous xfade graph of all segments into a single VLC window.
+        """Prep each clip's sample to a small ``.ts`` ONE AT A TIME, then stitch.
 
-        Builds the same continuous FFmpeg graph the renderer uses (per-clip
-        ``-ss start -t play`` + cumulative ``xfade``/``acrossfade``) but muxed as
-        ``mpegts`` to stdout, piped into a single ``vlc -`` process — no
-        multiple-window spawning — and waits for playback to finish.
+        Each clip is normalized to a small 720p ``.ts`` sequentially (synthesizing
+        silent audio when it has none, SKIPPING any clip whose prep fails); the
+        small uniform clips are then xfade-stitched into ONE ``vlc -`` window.
+        See :func:`ytdl.infra.playback.sample_stream.stream_samples`.
         """
-        if len(segments) < 2:
-            return
-        command = self._renderer.build_command(
-            list(segments), "pipe:1", crossfade=crossfade, container="mpegts"
-        )
-        ffmpeg_proc = self._runner(command, stdout=subprocess.PIPE)
-        vlc_proc = self._runner([vlc_binary or DEFAULT_VLC_BINARY, "-"], stdin=ffmpeg_proc.stdout)
-        vlc_proc.wait()
-
-
-class Option2Engine:
-    """Option 2 adapter: build a configured dual-libVLC matrix and play the FIFO."""
-
-    def __init__(
-        self,
-        vlc_module: ModuleType | None = None,
-        clock: Callable[[], float] = time.monotonic,
-        sleep: Callable[[float], None] = time.sleep,
-        ffmpeg: FfmpegLocator | None = None,
-        duration_fn: Callable[..., float] = probe_duration,
-        matrix_factory: Callable[..., Any] = LibVlcPlayerMatrix,
-    ) -> None:
-        self._vlc = vlc_module
-        self._clock = clock
-        self._sleep = sleep
-        self._ffmpeg = ffmpeg or FfmpegLocator()
-        self._duration_fn = duration_fn
-        self._matrix_factory = matrix_factory
-
-    def play_sequence(
-        self,
-        tracks: Sequence[Path | str],
-        *,
-        crossfade: float,
-        source_mix_time: float | None,
-        target_start_time: float | None,
-    ) -> None:
-        """Probe durations, build the configured matrix, and play the sequence."""
-        paths = [str(t) for t in tracks]
-        durations = [self._duration_fn(p, self._ffmpeg.exe()) for p in paths]
-        matrix = self._matrix_factory(
-            vlc_module=self._vlc,
-            clock=self._clock,
-            sleep=self._sleep,
+        stream_samples(
+            list(segments),
             crossfade=crossfade,
-            source_mix_time=source_mix_time,
-            target_start_time=target_start_time or 0.0,
+            sample_prep=self._sample_prep,
+            renderer=self._renderer,
+            runner=self._runner,
+            vlc_binary=vlc_binary,
+            log_path=self._log_path,
         )
-        matrix.play_sequence(paths, durations)
-
-    def play_segments(
-        self, segments: list[MixSegment], *, crossfade: float
-    ) -> None:
-        """Drive the matrix with each segment's in-point and mix point."""
-        if not segments:
-            return
-        matrix = self._matrix_factory(
-            vlc_module=self._vlc,
-            clock=self._clock,
-            sleep=self._sleep,
-            crossfade=crossfade,
-            source_mix_time=None,
-            target_start_time=segments[0].start,
-        )
-        active, idle = matrix.player_a, matrix.player_b
-        matrix.target_start_time = segments[0].start
-        matrix._prepare_next(active, segments[0].path)
-        for index in range(len(segments) - 1):
-            source, target = segments[index], segments[index + 1]
-            matrix.target_start_time = target.start
-            matrix._prepare_next(idle, target.path)
-            matrix.source_mix_time = _segment_mix_point(
-                source, self._duration_fn, self._ffmpeg
-            )
-            active = matrix.crossfade_pair(active, idle, matrix.source_mix_time)
-            idle = matrix.player_a if active is matrix.player_b else matrix.player_b

@@ -7,6 +7,9 @@ cookies.txt
 # Downloads (runtime output)
 downloads/
 
+# Logs (runtime app + subprocess logs)
+logs/
+
 # Persistent rate-limit usage ledger (runtime state)
 config/.usage_state.json
 .usage_state.json
