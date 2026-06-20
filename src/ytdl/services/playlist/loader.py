@@ -21,6 +21,7 @@ from ytdl.services.playlist.model import (
     MixToggles,
     Output,
     Playlist,
+    Sync,
 )
 from ytdl.shared.errors import PlaylistError
 
@@ -81,12 +82,14 @@ def _build_metadata(raw: dict[str, Any]) -> Metadata:
     output = Output(**_subset(raw.get("output"), Output))
     mix = MixToggles(**_subset(raw.get("mix"), MixToggles))
     leading = Leading(**_subset(raw.get("leading"), Leading))
+    sync = Sync(**_subset(raw.get("sync"), Sync))
     return Metadata(
         source_folder=str(raw.get("source_folder", "")),
         target_folder=str(raw.get("target_folder", "")),
         output=output,
         mix=mix,
         leading=leading,
+        sync=sync,
         loop=bool(raw.get("loop", True)),
     )
 

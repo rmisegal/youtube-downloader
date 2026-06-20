@@ -92,7 +92,9 @@ class SamplePrep:
         """
         play = segment.play_seconds or 0
         transition = resolve(segment.transition, segment.direction)
-        vfilter = image_vfilter(transition, play, (self._width, self._height), self._fps)
+        vfilter = image_vfilter(
+            transition, play, (self._width, self._height), self._fps, segment.bpm
+        )
         # CRITICAL: bound the OUTPUT with ``-t`` (after the inputs), NOT the image
         # input. ``zoompan`` emits ``d`` frames per input frame; an input-side ``-t``
         # on a looped image multiplies into tens of thousands of frames and the prep

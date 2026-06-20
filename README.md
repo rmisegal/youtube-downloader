@@ -425,6 +425,63 @@ to a uniform clip, then composited), so playback is one VLC window, auto-playing
 
 ---
 
+## Music sync — beat analyzer + auto-placed transitions (PRD-beatsync)
+
+Analyze the **leading song** and snap playlist transitions to the music. Two ways in:
+
+**1. Standalone analyzer (`--analyze`)** — export rhythm/structure cut-points to JSON/CSV for an NLE or your
+own tooling:
+```powershell
+uv run python -m ytdl --analyze "C:\media\song.mp3" --fps 30 -o beats.json
+# --levels beat,bar,phrase,section   --format json|csv
+```
+Output: `metadata` (bpm, duration, target_fps, `device`, `gpu_available`) + `cut_points.{beats,bars,phrases,
+sections}` with `timestamp_sec` **and** `frame_index = round(t*fps)`. Engine is **librosa** (CPU; an
+ffmpeg-predecode keeps a 4-min track under ~10s). Section labels (Intro/Verse/Chorus/…) are heuristic.
+
+**2. Playlist `metadata.sync`** — auto-place members on the planned cut-points and **fit each transition to the
+music**:
+```yaml
+version: "1.05"
+metadata:
+  source_folder: 'C:\media\photos'
+  output:  { display: true }
+  mix:     { video: true, audio: false }
+  leading: { kind: audio, file: 'C:\media\song.mp3' }   # the soundtrack to follow
+  sync:    { enabled: true, mode: auto }                 # auto = context-aware planner
+members:
+  - { id: 1, type: image, file: a.jpg }                 # at/until are assigned by the planner
+  - { id: 2, type: image, file: b.jpg }                 # members cycle across the cut-points
+  - { id: 3, type: image, file: c.jpg }
+```
+
+**Context-aware planner (`mode: auto`)** — the **section** dictates the cut rhythm (config
+`analysis.section_rules`): Intro/Outro → **phrase** (slow), Verse → **bar** (steady), Build-up/Chorus → **beat**
+(energetic), plus phrase-end **drum-fill** bursts. Or force a fixed grid with `mode: beat|bar|phrase|section`.
+
+**Transitions fit the sync type** — each cut carries its tier/section, so the placer picks a matching effect
+(config `analysis.tier_transitions` + `analysis.section_transitions`), including **beat-reactive** effects that
+move *in time with the BPM*:
+
+| Effect | Motion | Fits |
+|--------|--------|------|
+| `pulse` | heartbeat zoom-throb on each beat | Chorus / beat cuts |
+| `shake` | fast positional jitter | Build-up |
+| `bounce` | vertical bob on the beat | high-energy |
+| `flash` | brightness pulse on the beat | accents |
+| `zoomout` / `fade` | slow reveal / dissolve | Intro/Outro / Verse |
+
+Default mapping: Chorus→`pulse` (heartbeat), Build-up→`shake`, Verse→`fade`, Intro/Outro→`zoomout`. Beat-reactive
+effects also work as a manual `transition:` on any image. Verified on a real song: 103.4 BPM, 6 sections, with
+the heartbeat landing on the chorus beats and shake on the build-up.
+
+> **Scale note:** `mode: auto` over a *full* song yields many cut-points (one prepped clip each), so it's best
+> for shorter clips/sections today; use `mode: bar` or `section` for long tracks. A concat-based renderer for
+> dense beat-synced cuts is a planned optimization. (GPU: the analyzer runs on CPU and is fast enough; your
+> NVIDIA GPU + `cuda_libs` are detected and reported via `gpu_available` for a future optional neural backend.)
+
+---
+
 ## Secrets / optional environment
 
 Public YouTube videos require **no API key and no secrets**. Optional, user-supplied values may be

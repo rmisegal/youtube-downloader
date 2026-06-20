@@ -75,3 +75,17 @@ def test_pan_directions_differ() -> None:
 def test_zoompan_frame_count_scales_with_duration() -> None:
     vf = image_vfilter("zoomin", duration=4.0, canvas=CANVAS, fps=30)
     assert "d=120" in vf  # 4s * 30fps
+
+
+def test_resolve_recognizes_beat_transitions() -> None:
+    from ytdl.infra.playback.transitions import resolve
+
+    assert resolve("pulse") == "pulse"
+    assert resolve("shake") == "shake"
+    assert resolve("bounce") == "bounce"
+    assert resolve("flash") == "flash"
+
+
+def test_image_vfilter_beat_effect_uses_zoompan_and_bpm() -> None:
+    vf = image_vfilter("pulse", 4.0, CANVAS, 30, bpm=120.0)
+    assert "zoompan" in vf and "format=yuv420p" in vf and "sin" in vf

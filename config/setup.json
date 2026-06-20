@@ -18,6 +18,19 @@
       "Build-up": "beat",
       "Chorus": "beat",
       "Outro": "phrase"
+    },
+    "tier_transitions": {
+      "beat": "pulse",
+      "bar": "fade",
+      "phrase": "zoomout",
+      "section": "panright"
+    },
+    "section_transitions": {
+      "Intro": "zoomout",
+      "Verse": "fade",
+      "Build-up": "shake",
+      "Chorus": "pulse",
+      "Outro": "zoomout"
     }
   },
   "playback": {

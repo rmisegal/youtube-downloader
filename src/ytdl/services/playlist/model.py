@@ -21,6 +21,7 @@ from ytdl.constants import (
     OUTPUT_MODES,
     OUTPUT_SAVE,
     OUTPUT_STREAM,
+    SYNC_AUTO,
     TRANSITION_RANDOM,
 )
 
@@ -71,6 +72,14 @@ class Output:
 
 
 @dataclass(frozen=True)
+class Sync:
+    """Music-sync selector (``metadata.sync``) — auto-place members on cut-points."""
+
+    enabled: bool = False
+    mode: str = SYNC_AUTO
+
+
+@dataclass(frozen=True)
 class Metadata:
     """Playlist metadata block (``metadata``) (PRD §5.2)."""
 
@@ -79,7 +88,16 @@ class Metadata:
     output: Output = field(default_factory=Output)
     mix: MixToggles = field(default_factory=MixToggles)
     leading: Leading = field(default_factory=Leading)
+    sync: Sync = field(default_factory=Sync)
     loop: bool = True
+
+    def sync_enabled(self) -> bool:
+        """Whether music-sync auto-placement is enabled (``metadata.sync``)."""
+        return self.sync.enabled
+
+    def sync_mode(self) -> str:
+        """The sync mode (``auto`` = context-aware planner, or a fixed tier)."""
+        return self.sync.mode
 
     def active_outputs(self) -> list[str]:
         """Enabled output modes, ordered as :data:`OUTPUT_MODES`."""
@@ -131,3 +149,11 @@ class Playlist:
     def leading_file(self) -> str:
         """Delegate to :meth:`Metadata.leading_file`."""
         return self.metadata.leading_file()
+
+    def sync_enabled(self) -> bool:
+        """Delegate to :meth:`Metadata.sync_enabled`."""
+        return self.metadata.sync_enabled()
+
+    def sync_mode(self) -> str:
+        """Delegate to :meth:`Metadata.sync_mode`."""
+        return self.metadata.sync_mode()

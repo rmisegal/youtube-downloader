@@ -32,6 +32,7 @@ from ytdl.services.mixer.segment import MixSegment
 from ytdl.services.playlist.loader import load_playlist
 from ytdl.services.playlist.loader_build import build_segments
 from ytdl.services.playlist.summary import compute_summary
+from ytdl.services.playlist.sync import apply_sync
 
 _DEFAULT_MODE = ("playback.default_mode", "option2")
 _CROSSFADE = ("playback.crossfade_duration_seconds", 3)
@@ -64,9 +65,7 @@ class PlaylistRunner:
         self._option2 = option2
         self._renderer = renderer
         self._downloader = downloader
-        self._crossfade = (
-            crossfade if crossfade is not None else config.get(*_CROSSFADE)
-        )
+        self._crossfade = crossfade if crossfade is not None else config.get(*_CROSSFADE)
         # Bounded by default (one pass) so display tests never spin forever.
         self._should_continue = should_continue or (lambda iteration: iteration < 1)
 
@@ -74,6 +73,7 @@ class PlaylistRunner:
         """Load, build, and route the playlist; return a small report dict."""
         playlist = load_playlist(yaml_path, downloader=self._downloader)
         segments = build_segments(playlist, downloader=self._downloader)
+        segments = apply_sync(playlist, segments, self._config)  # music-sync pre-pass
         meta = playlist.metadata
         # Honest mix gate: subtitle off => drop per-member subtitle requests.
         if not gate_subtitle(meta.active_mix_streams()):

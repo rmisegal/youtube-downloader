@@ -68,7 +68,18 @@ TRANSITION_PANLEFT: str = "panleft"
 TRANSITION_PANRIGHT: str = "panright"
 TRANSITION_PANUP: str = "panup"
 TRANSITION_PANDOWN: str = "pandown"
-# Concrete transitions ``random`` may resolve to (excludes ``random`` itself).
+# Beat-reactive effects (PRD-beatsync): pulse/shake/bounce/flash at the music BPM.
+TRANSITION_PULSE: str = "pulse"  # heartbeat zoom throb on every beat
+TRANSITION_SHAKE: str = "shake"  # fast positional jitter (build-ups)
+TRANSITION_BOUNCE: str = "bounce"  # vertical bob on the beat
+TRANSITION_FLASH: str = "flash"  # brightness pulse on the beat
+BEAT_TRANSITIONS: tuple[str, ...] = (
+    TRANSITION_PULSE,
+    TRANSITION_SHAKE,
+    TRANSITION_BOUNCE,
+    TRANSITION_FLASH,
+)
+# Concrete STATIC transitions ``random`` may resolve to (no music needed).
 IMAGE_TRANSITIONS: tuple[str, ...] = (
     TRANSITION_FADE,
     TRANSITION_ZOOMIN,
@@ -78,6 +89,8 @@ IMAGE_TRANSITIONS: tuple[str, ...] = (
     TRANSITION_PANUP,
     TRANSITION_PANDOWN,
 )
+# Every recognised transition (static + beat-reactive).
+ALL_TRANSITIONS: tuple[str, ...] = IMAGE_TRANSITIONS + BEAT_TRANSITIONS
 # Playlist output-mode names (metadata.output toggles).
 OUTPUT_DISPLAY: str = "display"
 OUTPUT_SAVE: str = "save"
