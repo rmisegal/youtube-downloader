@@ -12,6 +12,10 @@ import sys
 from collections.abc import Callable
 from typing import Any
 
+from ytdl.shared.selection import parse_selection  # re-exported for callers/tests
+
+__all__ = ["Choice", "is_playlist_url", "parse_selection", "resolve_playlist_choice"]
+
 # A choice result the CLI passes straight to ``SDK.download``.
 Choice = dict[str, Any]
 
@@ -20,27 +24,6 @@ def is_playlist_url(url: str) -> bool:
     """True if the URL references a playlist/mix (``list=`` query or ``/playlist``)."""
     lowered = url.lower()
     return "list=" in lowered or "/playlist" in lowered
-
-
-def parse_selection(raw: str) -> str | None:
-    """Normalize ``"1, 3 ,5 , 2-4"`` into yt-dlp ``playlist_items`` (``"1,3,5,2-4"``).
-
-    Keeps integers and ``a-b`` ranges; drops empty/invalid tokens. Returns ``None``
-    when nothing valid remains.
-    """
-    tokens = []
-    for part in raw.replace(" ", "").split(","):
-        if not part:
-            continue
-        if part.isdigit() or _is_range(part):
-            tokens.append(part)
-    return ",".join(tokens) or None
-
-
-def _is_range(token: str) -> bool:
-    """True for a ``"a-b"`` integer range token."""
-    bits = token.split("-")
-    return len(bits) == 2 and all(b.isdigit() for b in bits)
 
 
 def resolve_playlist_choice(
