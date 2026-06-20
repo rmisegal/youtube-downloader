@@ -52,6 +52,17 @@ True FFmpeg crossfade engine, manual track picker, 2s crossfade:
 Set the crossfade mix points (mix out of the source at 30s; start the target at 10s):
   uv run python -m ytdl --mix --dir "C:\\videos" --source-mix-time 30 --target-start-time 10
 
+SAMPLER / PLAYLIST MODE (requires VLC installed):
+
+Preview a folder — crossfade a random mid-band sample of each clip, looping:
+  uv run python -m ytdl --sample-play --dir "C:\\videos"
+
+Sampler with a fixed per-clip play time and the FFmpeg engine:
+  uv run python -m ytdl --sample-play --dir "C:\\videos" --play-for-sec 5 --mode option1
+
+Play / save / stream a declarative YAML playlist:
+  uv run python -m ytdl --playlist-file "C:\\lists\\show.yaml"
+
 Flags:
   url               The YouTube video URL (positional).
   --video           Download best-quality mp4.
@@ -63,6 +74,9 @@ Flags:
   --sub-lang        Subtitle language code. Default: en.
   --no-playlist     For a list URL, download only the single video.
   --playlist-items  Download only these items, e.g. 1,3,5 or 1-5 (skips prompt).
+  --sample-play     Preview --dir: crossfade random mid-band samples (uses --mode).
+  --play-for-sec    Seconds to play each clip before the crossfade (sampler/mix).
+  --playlist-file   Path to a YAML playlist to display/save/stream.
   --version         Print code + config version and exit.
   --command         Show this run-command cheat-sheet and exit.
 

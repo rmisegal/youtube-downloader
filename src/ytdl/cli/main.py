@@ -1,9 +1,10 @@
 """CLI entry point — parses args and delegates 100% to the SDK (Rule 1).
 
 NO business logic lives here: argparse describes the surface (see
-:mod:`ytdl.cli.args`), this module reconfigures I/O for Unicode, logs progress,
-calls :class:`~ytdl.sdk.sdk.YoutubeDownloaderSDK`, and maps domain exceptions to
-deterministic exit codes (PRD §3.3).
+:mod:`ytdl.cli.args`), this module reconfigures I/O, sets up logging, routes to
+the run-handlers (mix/sample/playlist live in :mod:`ytdl.cli.run`; the download
+path stays here), and maps domain exceptions to deterministic exit codes
+(:mod:`ytdl.cli.exits`, PRD §3.3).
 """
 
 from __future__ import annotations
@@ -13,7 +14,20 @@ import logging
 import sys
 
 from ytdl.cli.args import build_parser
+from ytdl.cli.exits import (
+    EXIT_CONFIG_VERSION,
+    EXIT_GENERIC_ERROR,
+    EXIT_INVALID_URL,
+    EXIT_NETWORK_ERROR,
+    EXIT_PLAYBACK_DEP,
+    EXIT_PLAYLIST,
+    EXIT_RATE_LIMIT,
+    EXIT_SUCCESS,
+    EXIT_UNSUPPORTED,
+    EXIT_USAGE,
+)
 from ytdl.cli.playlist import is_playlist_url, resolve_playlist_choice
+from ytdl.cli.run import _fail, run_mix, run_playlist, run_sample
 from ytdl.cli.usage import commands_text
 from ytdl.sdk.sdk import YoutubeDownloaderSDK
 from ytdl.shared.config import ConfigManager
@@ -21,23 +35,26 @@ from ytdl.shared.errors import (
     ConfigVersionError,
     InvalidUrlError,
     NetworkError,
-    PlaybackDependencyError,
     RateLimitExceededError,
     UnsupportedRequestError,
 )
 
-# Deterministic exit codes (PRD §3.3).
-EXIT_SUCCESS: int = 0
-EXIT_GENERIC_ERROR: int = 1
-EXIT_INVALID_URL: int = 2
-EXIT_NETWORK_ERROR: int = 3
-EXIT_UNSUPPORTED: int = 4
-EXIT_CONFIG_VERSION: int = 5
-EXIT_RATE_LIMIT: int = 6  # configured quota hit or YouTube HTTP 429
-EXIT_PLAYBACK_DEP: int = 7  # VLC / playback dependency missing
-EXIT_USAGE: int = 2  # argparse/missing-url/missing-dir usage error
-
 _LOGGER = logging.getLogger("ytdl.cli")
+
+# Re-export the exit codes so existing callers/tests can use ``cli.EXIT_*``.
+__all__ = [
+    "EXIT_CONFIG_VERSION",
+    "EXIT_GENERIC_ERROR",
+    "EXIT_INVALID_URL",
+    "EXIT_NETWORK_ERROR",
+    "EXIT_PLAYBACK_DEP",
+    "EXIT_PLAYLIST",
+    "EXIT_RATE_LIMIT",
+    "EXIT_SUCCESS",
+    "EXIT_UNSUPPORTED",
+    "EXIT_USAGE",
+    "main",
+]
 
 
 def _configure_io() -> None:
@@ -84,34 +101,6 @@ def _resolve_playlist(sdk: YoutubeDownloaderSDK, args) -> dict:  # noqa: ANN001
     return {"no_playlist": False, "playlist_items": None}
 
 
-def _run_mix(args) -> int:  # noqa: ANN001 - argparse.Namespace
-    """Run the VJ video mixer over --dir; map exceptions to exit codes."""
-    if not args.dir:
-        print("Error: --dir is required with --mix.", file=sys.stderr)
-        return EXIT_USAGE
-    _LOGGER.info("phase=mix dir=%s mode=%s selection=%s", args.dir, args.mode, args.selection)
-    sdk = YoutubeDownloaderSDK()
-    try:
-        result = sdk.mix_local_directory(
-            args.dir,
-            mode=args.mode,
-            selection=args.selection,
-            crossfade=args.crossfade_time,
-            source_mix_time=args.source_mix_time,
-            target_start_time=args.target_start_time,
-        )
-    except PlaybackDependencyError as exc:
-        return _fail("Missing playback dependency — install VLC", exc, EXIT_PLAYBACK_DEP)
-    except FileNotFoundError as exc:
-        return _fail("Mix directory not found or drive not mounted", exc, EXIT_USAGE)
-    except RateLimitExceededError as exc:
-        return _fail("Rate limit / quota reached (protecting your account)", exc, EXIT_RATE_LIMIT)
-    except Exception as exc:  # noqa: BLE001 - top-level CLI boundary
-        return _fail("Unexpected error", exc, EXIT_GENERIC_ERROR)
-    _LOGGER.info("phase=done mix mode=%s tracks=%s", result.get("mode"), result.get("track_count"))
-    return EXIT_SUCCESS
-
-
 def _run_download(args) -> int:  # noqa: ANN001 - argparse.Namespace
     """Delegate the download to the SDK and map exceptions to exit codes."""
     _LOGGER.info("phase=resolve url=%s", args.url)
@@ -146,13 +135,6 @@ def _run_download(args) -> int:  # noqa: ANN001 - argparse.Namespace
     return EXIT_SUCCESS
 
 
-def _fail(label: str, exc: Exception, code: int) -> int:
-    """Log + print a clear error to stderr and return the mapped exit code."""
-    _LOGGER.error("%s: %s", label, exc)
-    print(f"Error: {label}: {exc}", file=sys.stderr)
-    return code
-
-
 def main(argv: list[str] | None = None) -> int:
     """Parse args and delegate to the SDK; return a deterministic exit code."""
     _configure_io()
@@ -163,7 +145,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.version:
         return _print_version()
     if args.mix:
-        return _run_mix(args)
+        return run_mix(args)
+    if args.sample_play:
+        return run_sample(args)
+    if args.playlist_file:
+        return run_playlist(args)
     if not args.url:
         print("Error: the 'url' argument is required.", file=sys.stderr)
         return EXIT_USAGE

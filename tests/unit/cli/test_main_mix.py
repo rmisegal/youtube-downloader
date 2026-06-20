@@ -7,11 +7,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ytdl.cli import main as cli
+from ytdl.cli import run as cli_run
 from ytdl.shared.errors import PlaybackDependencyError, RateLimitExceededError
 
 
 def _run(argv, sdk):
-    with patch.object(cli, "YoutubeDownloaderSDK", return_value=sdk):
+    with patch.object(cli_run, "YoutubeDownloaderSDK", return_value=sdk):
         return cli.main(argv)
 
 
