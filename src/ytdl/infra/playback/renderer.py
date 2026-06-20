@@ -19,6 +19,7 @@ from ytdl.infra.playback.renderer_graph import (
     build_video_graph,
 )
 from ytdl.infra.playback.renderer_leading import leading_command
+from ytdl.infra.playback.renderer_loop import build_loop_command, loop_copies
 from ytdl.services.mixer.segment import MixSegment
 
 
@@ -138,9 +139,30 @@ class MixRenderer:
             )
         else:
             command = self.build_command(segments, output_path, crossfade=crossfade)
+        self._run(command)
+        return output_path
+
+    def _run(self, command: list[str]) -> None:
+        """Run an ffmpeg command (stdin detached) with stderr to log/DEVNULL."""
         if self._log_path:
             with open(self._log_path, "a", encoding="utf-8") as handle:
                 self._runner(command, stdin=subprocess.DEVNULL, stderr=handle)
         else:
             self._runner(command, stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return output_path
+
+    def looped_leading(
+        self, leading_path: str, video_seconds: float, crossfade: float, tmp_dir: str
+    ) -> str:
+        """Return a leading-audio path that covers ``video_seconds``.
+
+        When the song is shorter than the video, pre-renders a crossfade-looped
+        copy (clean dissolving seams) into ``tmp_dir`` and returns it; otherwise
+        returns ``leading_path`` unchanged (no loop needed).
+        """
+        audio_seconds = self._duration_fn(leading_path, self._ffmpeg.exe())
+        copies = loop_copies(audio_seconds, video_seconds, crossfade)
+        if copies < 2:
+            return leading_path
+        out = str(Path(tmp_dir) / "leadloop.m4a")
+        self._run(build_loop_command(self._ffmpeg.exe(), leading_path, copies, crossfade, out))
+        return out if Path(out).is_file() else leading_path

@@ -60,6 +60,7 @@ def test_run_segments_preps_each_clip_then_renders_file_and_opens_vlc() -> None:
 def test_run_segments_leading_audio_uses_leading_command() -> None:
     renderer = MagicMock()
     renderer.build_leading_command.return_value = ["ffmpeg", "lead", "mix.mp4"]
+    renderer.looped_leading.return_value = "song.mp4"  # no loop needed (song long enough)
     runner = MagicMock()
     prep = _sample_prep([True, True])
     engine = Option1Engine(
@@ -73,6 +74,8 @@ def test_run_segments_leading_audio_uses_leading_command() -> None:
     # Leading => the leading renderer is used; the plain build_command is NOT.
     renderer.build_leading_command.assert_called_once()
     renderer.build_command.assert_not_called()
+    # The leading audio is routed through looped_leading first (clean-loop helper).
+    renderer.looped_leading.assert_called_once()
     args = renderer.build_leading_command.call_args.args  # (prepared, path, kind, out)
     assert args[1] == "song.mp4"
     assert args[2] == "audio"

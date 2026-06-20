@@ -85,8 +85,17 @@ def stream_samples(
         if leading_path and leading_kind in ("video", "audio"):
             # Members supply the picture; the leading track supplies the soundtrack
             # (audio) or the master picture (video). Same render-to-file→VLC flow.
+            lead = leading_path
+            if leading_kind == "audio":
+                # Clean crossfade-loop the song when it is shorter than the video.
+                video_seconds = sum(s.play_seconds or 0.0 for s in prepared) - crossfade * (
+                    len(prepared) - 1
+                )
+                lead = renderer.looped_leading(
+                    leading_path, max(0.0, video_seconds), crossfade, tmp_dir
+                )
             command = renderer.build_leading_command(
-                prepared, leading_path, leading_kind, out_file, crossfade=crossfade
+                prepared, lead, leading_kind, out_file, crossfade=crossfade
             )
         else:
             command = renderer.build_command(prepared, out_file, crossfade=crossfade)
