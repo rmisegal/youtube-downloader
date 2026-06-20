@@ -1,0 +1,58 @@
+# Example declarative playlist (PRD-playlist v1.03).
+# Run it with:  uv run python -m ytdl --playlist-file "docs/examples/playlist.yaml"
+# File paths below are illustrative — adjust them to your own media before running.
+version: "1.03"
+
+metadata:
+  source_folder: "C:/videos"        # default folder for members whose file has no path separator
+  target_folder: "C:/out"           # where the saved render is written (output.save)
+
+  output:
+    display: true                   # play the mix live in VLC
+    save: false                     # render the whole mix into ONE file in target_folder (FFmpeg)
+    stream: false                   # act as a local VLC loopback streamer
+
+  mix:
+    video: true                     # produce the video stream
+    audio: true                     # produce the audio mix
+    subtitle: false                 # do not produce subtitles
+
+  leading:
+    kind: none                      # none | video | audio
+    file: ""                        # leading master file (empty when kind == none)
+
+  loop: true                        # loop the live mix (save is still done once)
+
+  summary:                          # COMPUTED OUTPUT — filled in by the tool, not required as input
+    total_length_seconds: 0
+    total_file_size_bytes: 0
+    resolution: ""
+    members: []
+
+members:
+  - id: 1
+    file: "intro.mp4"               # bare name => source_folder/intro.mp4
+    start_time: 12.0
+    play_time: 10.0
+    playback_speed: 1.0
+    resolution: "max"
+    subtitle: false
+    effect: "fade"
+
+  - id: 2
+    file: "C:/other/clip2.mkv"      # absolute path is used as-is
+    start_time: 0.0
+    play_time: 8.0
+    playback_speed: 1.25
+    resolution: "1280x720"
+    subtitle: "clip2.he.srt"
+    effect: "fade"
+
+  - id: 3
+    file: "outro.mov"
+    start_time: 2.5
+    play_time: 6.0
+    playback_speed: 1.0
+    resolution: "max"
+    subtitle: true                  # read the clip's embedded subtitle track
+    effect: "fade"

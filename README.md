@@ -251,6 +251,133 @@ All playback defaults live in `config/setup.json` under `playback` (`default_mod
 
 ---
 
+## Sampler & YAML playlists
+
+Two further playback modes build on the mixer: a **sampler** that previews a folder by jumping to a random
+mid-point of each clip, and a declarative **YAML playlist** that can display, save, and/or stream a mix.
+See `docs/PRD-playlist.md` for the full spec.
+
+**Prerequisites:** **VLC Media Player** is required for `display` and `stream` (the same desktop install as
+mix mode — missing VLC → exit **7**). The `save` renderer uses **FFmpeg**, which is bundled via
+`imageio-ffmpeg` (installed by `uv sync`) — no separate FFmpeg install is needed.
+
+### Sampler — `--sample-play`
+
+```powershell
+# Crossfade a random mid-band 10s sample of each clip in the folder, looping
+uv run python -m ytdl --sample-play --dir "C:\\videos"
+
+# Play each sample for 6 seconds instead, using the FFmpeg-crossfade engine
+uv run python -m ytdl --sample-play --dir "C:\\videos" --play-for-sec 6 --mode option1
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--sample-play` | off | Preview `--dir`: crossfade a random mid-band sample of each clip, looping the folder. |
+| `--dir` | required | Folder of local videos to sample. |
+| `--play-for-sec` | unset | Per-clip play duration in seconds (float) before the crossfade. Overrides the sampler default. Applies to the sampler and as the default for YAML members lacking `play_time`. |
+| `--mode` | `option2` | Playback engine (`option1` FFmpeg true crossfade, or `option2` dual-libVLC) — same as mix mode. |
+
+For each clip the sampler probes its duration and seeks to a random point in the middle band
+(config `sample.mid_band_low`–`sample.mid_band_high`, defaults `0.25`–`0.75`), plays
+`sample.play_seconds` (config default **10**) — or `--play-for-sec` if given — then crossfades into the
+next clip's sample. At the end of the folder it **loops by default** (`sample.loop`) until you stop it.
+
+### Declarative playlists — `--playlist-file`
+
+```powershell
+uv run python -m ytdl --playlist-file "C:\\lists\\show.yaml"
+```
+
+A playlist is a YAML file describing a mix: where the clips live, how each is trimmed/sped/styled, an
+optional **leading** master track, and how the result is routed (display / save / stream). A worked example
+lives at [`docs/examples/playlist.yaml`](docs/examples/playlist.yaml).
+
+```yaml
+version: "1.03"
+metadata:
+  source_folder: "C:/videos"        # default folder for members whose file has no path
+  target_folder: "C:/out"           # where the saved/rendered output is written
+  output:
+    display: true                   # play live in VLC
+    save: false                     # render the whole mix into ONE file in target_folder
+    stream: false                   # act as streamer (local VLC loopback broadcast)
+  mix:
+    video: true                     # produce the video stream
+    audio: true                     # produce the audio mix
+    subtitle: false                 # produce subtitles (off => not created)
+  leading:
+    kind: none                      # none | video | audio
+    file: ""                        # leading master file (see "Leading semantics" below)
+  loop: true                        # loop the live mix; if false play once (save is done once either way)
+  summary:                          # COMPUTED OUTPUT — filled by the tool, not required as input
+    total_length_seconds: 0
+    total_file_size_bytes: 0
+    resolution: ""
+    members: []
+members:
+  - id: 1                           # order in the playlist (members are sorted by id)
+    file: "intro.mp4"               # bare name (no separator) => source_folder/intro.mp4
+    start_time: 12.0                # seconds into the clip to start
+    play_time: 10.0                 # seconds to play before mixing into the next clip
+    playback_speed: 1.0             # 1.0 = normal
+    resolution: "max"              # "max" or "WxH"
+    subtitle: false                 # false | true (read embedded) | "subs.srt" (insert that file)
+    effect: "fade"                  # mix / transition effect
+  - id: 2
+    file: "C:/other/clip2.mkv"      # absolute path is used as-is
+    start_time: 0.0
+    play_time: 8.0
+    playback_speed: 1.25
+    resolution: "1280x720"
+    subtitle: "clip2.he.srt"
+    effect: "fade"
+```
+
+**Schema fields**
+
+| Block | Field | Default | Meaning |
+|-------|-------|---------|---------|
+| top | `version` | required | Must be `"1.03"` (the only supported playlist version). |
+| `metadata` | `source_folder` | `""` | Folder prepended to member files that carry no path separator. |
+| `metadata` | `target_folder` | `""` | Destination folder for the `save` render. |
+| `metadata.output` | `display` / `save` / `stream` | `true` / `false` / `false` | Output routing (any combination). |
+| `metadata.mix` | `video` / `audio` / `subtitle` | `true` / `true` / `false` | Per-stream toggles; an off stream is not produced. |
+| `metadata.leading` | `kind` / `file` | `none` / `""` | Leading master track (see below). |
+| `metadata` | `loop` | `true` | Loop the live mix; `false` plays once. |
+| `metadata.summary` | — | computed | Filled by the tool (length / size / resolution / members) — not required as input. |
+| `members[]` | `id` | required | Order key — members are sorted by `id`. |
+| `members[]` | `file` | required | Bare name → `source_folder/<file>`; a path or `http(s)://` URL is used as given (URLs are downloaded). |
+| `members[]` | `start_time` | `0.0` | In-point (seconds). |
+| `members[]` | `play_time` | unset | Seconds to play before the crossfade (falls back to `--play-for-sec` / config / full clip). |
+| `members[]` | `playback_speed` | `1.0` | Playback speed. |
+| `members[]` | `resolution` | `"max"` | `"max"` or `"WxH"`. |
+| `members[]` | `subtitle` | none | `false` (off) / `true` (read embedded) / `"<file>"` (insert that file). |
+| `members[]` | `effect` | `"fade"` | Mix / transition effect name. |
+
+**Leading semantics** (`metadata.leading.kind`)
+
+- `none` — standard segment mix; total length = sum of member `play_time` minus the crossfade overlaps.
+- `video` — the leading video's **picture and length** are the master. Its **own audio track is muted /
+  dropped**; the audio comes entirely from the members' mix. Output is one video the length of the leading
+  video.
+- `audio` — the leading source's **audio track and length** are the master. The `file` may be a plain audio
+  file **or a video file** — when it is a video file, its **picture is discarded and only its audio track is
+  used**. The members supply the **video** mix. Output length = the leading audio's length.
+
+**Output modes** (`metadata.output` — any combination)
+
+- `display` → live playback through the VLC engines.
+- `save` → the `MixRenderer` renders the whole mix into **one file** in `target_folder` via FFmpeg. This is
+  done **once even when `loop` is true**.
+- `stream` → local VLC loopback broadcast (Option-1 `vlc -`). No external RTMP/YouTube/Twitch push.
+
+**Exit code 8** — an invalid or malformed playlist YAML (bad parse, not a mapping, missing `version`,
+unsupported version, missing required member `id`/`file`, or a member file that cannot be found) raises a
+`PlaylistError` and the CLI exits with **code 8**. (Missing VLC for display/stream still exits **7**.)
+
+---
+
 ## Secrets / optional environment
 
 Public YouTube videos require **no API key and no secrets**. Optional, user-supplied values may be
@@ -315,7 +442,8 @@ Deterministic, matching the constants in [`src/ytdl/cli/main.py`](src/ytdl/cli/m
 | `4` | Unsupported request. |
 | `5` | Configuration version mismatch. |
 | `6` | Rate limit / quota reached (configured cap or YouTube HTTP 429) — stopped to protect the account. |
-| `7` | Playback dependency missing (VLC not installed) — mix mode only. |
+| `7` | Playback dependency missing (VLC not installed) — mix / sampler / playlist modes. |
+| `8` | Invalid or malformed playlist YAML (`PlaylistError`) — `--playlist-file` only. |
 
 ---
 

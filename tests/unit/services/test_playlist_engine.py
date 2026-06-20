@@ -77,3 +77,16 @@ def test_select_manual_empty_reply_returns_all(tmp_path: Path) -> None:
     tracks = _make_tracks(tmp_path)
     result = _engine(input_fn=lambda _p: "  ").select(tracks, "manual", tty=True)
     assert result == tracks
+
+
+def test_select_manual_default_tty_falls_back_to_stdin_isatty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # tty=None (default) -> _interactive consults sys.stdin.isatty(); here False,
+    # so the picker is skipped and all tracks are returned.
+    import ytdl.services.mixer.playlist_engine as engine_mod
+
+    monkeypatch.setattr(engine_mod.sys.stdin, "isatty", lambda: False)
+    tracks = _make_tracks(tmp_path)
+    result = _engine(input_fn=lambda _p: "1").select(tracks, "manual")
+    assert result == tracks

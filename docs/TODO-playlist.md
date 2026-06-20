@@ -216,54 +216,54 @@
 ## Phase 8 — Testing & Coverage
 **Objective:** fixtures, error paths, ≥85%. | **Plan refs:** §13 | **Rules:** 7,9
 
-- [ ] Add conftest fixture: tmp YAML file + in-memory playlist dict (Plan Phase 8.1, R50, Rule #7)
-- [ ] Add conftest fixture: mock FFmpeg subprocess runner (Plan Phase 8.1, R50)
-- [ ] Add conftest fixture: mock VLC / `python-vlc` (reuse existing) (Plan Phase 8.1, R50)
-- [ ] Add conftest fixture: mock `probe_duration` (Plan Phase 8.1, R50)
-- [ ] Add conftest fixture: injectable seeded RNG + fake clock (Plan Phase 8.1, R50)
-- [ ] Error-path test: malformed YAML → exit 8 (Plan Phase 8.2, R51, Rule #7)
-- [ ] Error-path test: missing dir → exit 2 (Plan Phase 8.2, R51, Rule #7)
-- [ ] Error-path test: missing VLC → exit 7 (Plan Phase 8.2, R51, Rule #7)
-- [ ] Test: sampler deterministic under seeded RNG (Plan Phase 8.2, R51)
-- [ ] Test: `--play-for-sec` overrides config (Plan Phase 8.2, R51)
-- [ ] Test: mix toggles gate streams (Plan Phase 8.2, R51)
-- [ ] Test: leading-kind selects correct master (mute/strip) (Plan Phase 8.2, R51)
-- [ ] Test: MixRenderer argv (offsets/`-ss`/`-t`/codecs) (Plan Phase 8.2, R51)
-- [ ] Test: summary computes length/size/resolution (Plan Phase 8.2, R51)
-- [ ] Confirm no real render/playback/network in unit tests (Plan Gate 8 functional, R50)
-- [ ] Raise coverage to ≥85%; test files ≤150 lines (Plan Phase 8.3, R52, Rule #8,#9)
-- [ ] Phase 8 Gate — full suite green; coverage ≥85% (Plan Gate 8, Rule #9)
-- [ ] Phase 8 Gate — run `uv run pytest tests/ --cov=src --cov-report=term-missing` (Plan Gate 8 automated)
-- [ ] Phase 8 Gate — run ruff + file-size (Plan Gate 8, Rule #8,#10)
-- [ ] Phase 8 Commit — `test(playlist): fixtures, error paths, coverage >=85%` (Rule #6,#9)
+- [x] Add conftest fixture: tmp YAML file + in-memory playlist dict (Plan Phase 8.1, R50, Rule #7)
+- [x] Add conftest fixture: mock FFmpeg subprocess runner (Plan Phase 8.1, R50)
+- [x] Add conftest fixture: mock VLC / `python-vlc` (reuse existing) (Plan Phase 8.1, R50)
+- [x] Add conftest fixture: mock `probe_duration` (Plan Phase 8.1, R50)
+- [x] Add conftest fixture: injectable seeded RNG + fake clock (Plan Phase 8.1, R50)
+- [x] Error-path test: malformed YAML → exit 8 (Plan Phase 8.2, R51, Rule #7)
+- [x] Error-path test: missing dir → exit 2 (Plan Phase 8.2, R51, Rule #7)
+- [x] Error-path test: missing VLC → exit 7 (Plan Phase 8.2, R51, Rule #7)
+- [x] Test: sampler deterministic under seeded RNG (Plan Phase 8.2, R51)
+- [x] Test: `--play-for-sec` overrides config (Plan Phase 8.2, R51)
+- [x] Test: mix toggles gate streams (Plan Phase 8.2, R51)
+- [x] Test: leading-kind selects correct master (mute/strip) (Plan Phase 8.2, R51)
+- [x] Test: MixRenderer argv (offsets/`-ss`/`-t`/codecs) (Plan Phase 8.2, R51)
+- [x] Test: summary computes length/size/resolution (Plan Phase 8.2, R51)
+- [x] Confirm no real render/playback/network in unit tests (Plan Gate 8 functional, R50)
+- [x] Raise coverage to ≥85%; test files ≤150 lines (Plan Phase 8.3, R52, Rule #8,#9)
+- [x] Phase 8 Gate — full suite green; coverage ≥85% (Plan Gate 8, Rule #9)
+- [x] Phase 8 Gate — run `uv run pytest tests/ --cov=src --cov-report=term-missing` (Plan Gate 8 automated)
+- [x] Phase 8 Gate — run ruff + file-size (Plan Gate 8, Rule #8,#10)
+- [x] Phase 8 Commit — `test(playlist): fixtures, error paths, coverage >=85%` (Rule #6,#9)
 
 ---
 
 ## Phase 9 — Security Review
 **Objective:** safe YAML, no secrets. | **Plan refs:** §10 | **Rules:** 13
 
-- [ ] Confirm loader uses `yaml.safe_load` only (no `yaml.load`) (Plan Phase 9.1, Rule #13)
-- [ ] Run secret-scan over new modules (Plan Phase 9.1, R48, Rule #13)
-- [ ] Confirm no secrets/credentials in new code (Plan Phase 9.1, R48)
-- [ ] Confirm `.gitignore`/`.env-example` unchanged-and-sufficient (Plan Phase 9.2, R48)
-- [ ] Phase 9 Gate — `safe_load` only; secret scan clean (Plan Gate 9, Rule #13)
-- [ ] Phase 9 Gate — run secret-scan script (Plan Gate 9 automated)
-- [ ] Phase 9 Commit — `chore(security): playlist YAML safe_load + secret scan` (Rule #6,#13)
+- [x] Confirm loader uses `yaml.safe_load` only (no `yaml.load`) (Plan Phase 9.1, Rule #13)
+- [x] Run secret-scan over new modules (Plan Phase 9.1, R48, Rule #13)
+- [x] Confirm no secrets/credentials in new code (Plan Phase 9.1, R48)
+- [x] Confirm `.gitignore`/`.env-example` unchanged-and-sufficient (Plan Phase 9.2, R48)
+- [x] Phase 9 Gate — `safe_load` only; secret scan clean (Plan Gate 9, Rule #13)
+- [x] Phase 9 Gate — run secret-scan script (Plan Gate 9 automated)
+- [x] Phase 9 Commit — `chore(security): playlist YAML safe_load + secret scan` (Rule #6,#13)
 
 ---
 
 ## Phase 10 — Documentation & Deliverables
 **Objective:** README + sample YAML. | **Plan refs:** §1,§11 | **Rules:** 14
 
-- [ ] Write README "Sampler & YAML playlists" section (flags + behavior) (Plan Phase 10.1, R53)
-- [ ] Document the YAML schema in README (metadata + members) (Plan Phase 10.1, R53)
-- [ ] Document leading semantics (mute leading video audio; video-source-as-audio-only) (Plan Phase 10.1, R17,R18)
-- [ ] Document exit code 8 + save output location in README (Plan Phase 10.1, R46)
-- [ ] Create `docs/examples/playlist.yaml` sample (Plan Phase 10.2, R54)
-- [ ] Document non-goals (no GUI/RTMP/alpha/styling/HW) in README (Plan Phase 10.3, R49)
-- [ ] Phase 10 Gate — README commands run as written; sample YAML validates (Plan Gate 10 functional)
-- [ ] Phase 10 Gate — docs reference uv-only commands (Plan Gate 10, Rule #14)
-- [ ] Phase 10 Commit — `docs: sampler/playlist README + example YAML` (Rule #6)
+- [x] Write README "Sampler & YAML playlists" section (flags + behavior) (Plan Phase 10.1, R53)
+- [x] Document the YAML schema in README (metadata + members) (Plan Phase 10.1, R53)
+- [x] Document leading semantics (mute leading video audio; video-source-as-audio-only) (Plan Phase 10.1, R17,R18)
+- [x] Document exit code 8 + save output location in README (Plan Phase 10.1, R46)
+- [x] Create `docs/examples/playlist.yaml` sample (Plan Phase 10.2, R54)
+- [x] Document non-goals (no GUI/RTMP/alpha/styling/HW) in README (Plan Phase 10.3, R49)
+- [x] Phase 10 Gate — README commands run as written; sample YAML validates (Plan Gate 10 functional)
+- [x] Phase 10 Gate — docs reference uv-only commands (Plan Gate 10, Rule #14)
+- [x] Phase 10 Commit — `docs: sampler/playlist README + example YAML` (Rule #6)
 
 ---
 

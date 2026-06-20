@@ -111,6 +111,13 @@ def test_returns_exactly_four_keys() -> None:
     }
 
 
+def test_non_numeric_resolution_tail_is_ignored() -> None:
+    # A malformed "WxH" whose height is non-numeric -> height 0 -> falls back to "max".
+    segs = [_seg("a.mp4", play_seconds=1.0, resolution="1280xHD")]
+    out = compute_summary(segs, crossfade=0.0, duration_fn=_no_probe, size_fn=_fixed_size)
+    assert out["resolution"] == "max"
+
+
 def test_empty_segments_is_safe() -> None:
     out = compute_summary([], crossfade=2.0, duration_fn=_no_probe, size_fn=_fixed_size)
     assert out == {
