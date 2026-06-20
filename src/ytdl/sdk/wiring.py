@@ -11,7 +11,11 @@ from pathlib import Path
 from typing import Any
 
 from ytdl.infra.jsruntime import detect_runtime
+from ytdl.infra.playback.engines import Option1Engine, Option2Engine
+from ytdl.infra.playback.vlc_locator import VlcLocator
 from ytdl.infra.ytdlp_client import YtDlpClient
+from ytdl.services.mixer.mixer_service import MixerService
+from ytdl.services.mixer.playlist_engine import PlaylistEngine
 from ytdl.shared.config import ConfigManager
 from ytdl.shared.gatekeeper import ApiGatekeeper
 from ytdl.shared.queue import DownloadQueue
@@ -63,3 +67,18 @@ def build_client(rate_config: ConfigManager) -> YtDlpClient:
         usage=build_usage(rate_config),
     )
     return YtDlpClient(gatekeeper)
+
+
+def build_mixer(config: ConfigManager, downloader: Any) -> MixerService:
+    """Assemble the video-mixer stack (PlaylistEngine + VlcLocator + both engines).
+
+    ``downloader`` is the SDK itself, used for rate-limited YouTube hot-injection.
+    """
+    return MixerService(
+        config,
+        playlist=PlaylistEngine(config),
+        vlc_locator=VlcLocator(),
+        stream_server=Option1Engine(),
+        matrix=Option2Engine(),
+        downloader=downloader,
+    )

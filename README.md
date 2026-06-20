@@ -204,6 +204,53 @@ for full format availability.
 
 ---
 
+## Video mixer / VJ mode (`--mix`)
+
+Beyond downloading, the tool can run a **real-time VJ player** that plays a folder of videos back-to-back
+with **crossfade transitions** of video and audio. See `docs/PRD-mixer.md` for the full spec.
+
+**Prerequisite:** **VLC Media Player** must be installed (https://www.videolan.org/) — it is a desktop app,
+not a pip package. `python-vlc` is installed automatically via `uv sync`. If VLC is missing, mix mode prints
+a clear message and exits with **code 7**.
+
+```powershell
+# Mix a folder (dual-libVLC gapless engine, random order — defaults)
+uv run python -m ytdl --mix --dir "C:\videos"
+
+# True FFmpeg crossfade engine, manual track picker, 2-second crossfade
+uv run python -m ytdl --mix --dir "C:\videos" --mode option1 --selection manual --crossfade-time 2
+
+# Set the crossfade mix points: mix OUT of the source at 30s, start the target at its 10s mark
+uv run python -m ytdl --mix --dir "C:\videos" --source-mix-time 30 --target-start-time 10
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--mix` | off | Switch to mixer / VJ playback mode. |
+| `--dir` | required | Folder of local videos (`.mp4 .mkv .mov .avi`). |
+| `--mode` | `option2` | `option1` (FFmpeg `xfade`/`acrossfade` → VLC — **true video+audio crossfade**) or `option2` (dual-libVLC gapless switching + audio crossfade). |
+| `--selection` | `random` | `random` (infinite shuffle) or `manual` (numbered picker; comma-separated, ranges like `2-4`). |
+| `--crossfade-time` | `3` | Crossfade overlap window in seconds. |
+| `--source-mix-time` | source end | Seconds into the **source** clip where the crossfade begins (default = `duration − crossfade`). |
+| `--target-start-time` | `0` | In-point (seconds) where the **target** clip starts. |
+
+**Two engines:**
+- **Option 1 (true crossfade):** FFmpeg builds an `xfade`+`acrossfade` composite and pipes it as `mpegts`
+  into a standalone VLC (`vlc -`) — a seamless, un-seekable live broadcast with real per-frame video+audio blend.
+- **Option 2 (gapless switching):** two libVLC players double-buffer; the idle deck pre-seeks the next track
+  to `--target-start-time`, and at the source's `--source-mix-time` the decks hand off with an **audio**
+  crossfade. *libVLC cannot alpha-composite two video windows, so Option 2 does not do per-pixel video blending
+  — use Option 1 for that.*
+
+YouTube URLs can be hot-injected into a running mix; they are downloaded through the same rate-limited
+`ApiGatekeeper` path, so playback never bypasses the download safety guards. Mix paths on removable drives
+(`D:`/`H:`) are checked with a mount guard before scanning (missing drive → exit 2, never a hang).
+
+All playback defaults live in `config/setup.json` under `playback` (`default_mode`, `default_selection`,
+`crossfade_duration_seconds`, `source_mix_time_seconds`, `target_start_time_seconds`, `supported_video_formats`).
+
+---
+
 ## Secrets / optional environment
 
 Public YouTube videos require **no API key and no secrets**. Optional, user-supplied values may be
@@ -263,11 +310,12 @@ Deterministic, matching the constants in [`src/ytdl/cli/main.py`](src/ytdl/cli/m
 |------|---------|
 | `0` | Success. |
 | `1` | Other / unexpected error. |
-| `2` | Invalid or unavailable URL (also used for argparse/missing-url usage errors). |
+| `2` | Invalid/unavailable URL, or argparse/missing-url/missing-`--dir` usage errors. |
 | `3` | Network failure after retries. |
 | `4` | Unsupported request. |
 | `5` | Configuration version mismatch. |
 | `6` | Rate limit / quota reached (configured cap or YouTube HTTP 429) — stopped to protect the account. |
+| `7` | Playback dependency missing (VLC not installed) — mix mode only. |
 
 ---
 

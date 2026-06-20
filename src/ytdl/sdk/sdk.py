@@ -14,7 +14,7 @@ from typing import Any
 from ytdl.constants import MODE_AUDIO, MODE_SUBS, MODE_VIDEO
 from ytdl.infra.ytdlp_client import YtDlpClient
 from ytdl.sdk.compose import compose_opts
-from ytdl.sdk.wiring import build_client, build_extra_opts
+from ytdl.sdk.wiring import build_client, build_extra_opts, build_mixer
 from ytdl.services.audio import AudioDownloader
 from ytdl.services.base import BaseDownloader
 from ytdl.services.metadata import MetadataService
@@ -120,6 +120,31 @@ class YoutubeDownloaderSDK:
             if on
         ]
         return {"url": url, "modes": modes, "output_dir": out_dir, "name": name}
+
+    def mix_local_directory(
+        self,
+        directory: str,
+        *,
+        mode: str | None = None,
+        selection: str | None = None,
+        crossfade: int | None = None,
+        source_mix_time: float | None = None,
+        target_start_time: float | None = None,
+    ) -> dict[str, Any]:
+        """Run the VJ mixer over a local folder (PRD-mixer §3). Single entry point.
+
+        Unspecified arguments fall back to the ``playback`` config block. The SDK is
+        passed to the mixer as the rate-limited downloader for YouTube hot-injection.
+        """
+        mixer = build_mixer(self._config, downloader=self)
+        return mixer.mix(
+            directory,
+            mode=mode,
+            selection=selection,
+            crossfade=crossfade,
+            source_mix_time=source_mix_time,
+            target_start_time=target_start_time,
+        )
 
     def download_video(self, url: str, **kwargs: Any) -> dict[str, Any]:
         """Convenience: download video only (delegates to :meth:`download`)."""

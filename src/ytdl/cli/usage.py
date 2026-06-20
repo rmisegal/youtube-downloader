@@ -41,6 +41,17 @@ Print code + config version:
 Show this command list:
   uv run python -m ytdl --command
 
+VIDEO MIXER / VJ MODE (requires VLC installed):
+
+Mix a folder of videos with crossfades (dual-libVLC gapless, random order):
+  uv run python -m ytdl --mix --dir "C:\\videos"
+
+True FFmpeg crossfade engine, manual track picker, 2s crossfade:
+  uv run python -m ytdl --mix --dir "C:\\videos" --mode option1 --selection manual --crossfade-time 2
+
+Set the crossfade mix points (mix out of the source at 30s; start the target at 10s):
+  uv run python -m ytdl --mix --dir "C:\\videos" --source-mix-time 30 --target-start-time 10
+
 Flags:
   url               The YouTube video URL (positional).
   --video           Download best-quality mp4.
@@ -54,6 +65,14 @@ Flags:
   --playlist-items  Download only these items, e.g. 1,3,5 or 1-5 (skips prompt).
   --version         Print code + config version and exit.
   --command         Show this run-command cheat-sheet and exit.
+
+Mixer flags (with --mix):
+  --dir             Folder of local videos to mix (required).
+  --mode            option1 (FFmpeg->VLC, true crossfade) | option2 (dual-libVLC). Default option2.
+  --selection       random (infinite shuffle) | manual (numbered picker). Default random.
+  --crossfade-time  Crossfade overlap seconds. Default 3.
+  --source-mix-time Seconds into the source where the crossfade begins. Default: clip end.
+  --target-start-time  In-point seconds where the target starts. Default 0.
 """
 
 

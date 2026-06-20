@@ -66,6 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Download only these playlist items, e.g. '1,3,5' or '1-5' (skips the prompt).",
     )
+    _add_mixer_args(parser)
     parser.add_argument(
         "--version",
         action="store_true",
@@ -78,3 +79,50 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show the run-command cheat-sheet (with examples) and exit.",
     )
     return parser
+
+
+def _add_mixer_args(parser: argparse.ArgumentParser) -> None:
+    """Add the VJ video-mixer flags (PRD-mixer §3)."""
+    parser.add_argument(
+        "--mix",
+        action="store_true",
+        help="Switch to live video mixer / VJ playback mode (instead of downloading).",
+    )
+    parser.add_argument(
+        "--dir",
+        default=None,
+        help="Folder of local video assets to mix (required with --mix).",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=("option1", "option2"),
+        default=None,
+        help="Engine: option1 (FFmpeg->VLC, true crossfade) or option2 (dual-libVLC). Default: option2.",
+    )
+    parser.add_argument(
+        "--selection",
+        choices=("random", "manual"),
+        default=None,
+        help="Track selection: random (infinite shuffle) or manual (numbered picker). Default: random.",
+    )
+    parser.add_argument(
+        "--crossfade-time",
+        dest="crossfade_time",
+        type=int,
+        default=None,
+        help="Crossfade overlap window in seconds. Default: 3.",
+    )
+    parser.add_argument(
+        "--source-mix-time",
+        dest="source_mix_time",
+        type=float,
+        default=None,
+        help="Seconds into the source clip where the crossfade begins. Default: clip end.",
+    )
+    parser.add_argument(
+        "--target-start-time",
+        dest="target_start_time",
+        type=float,
+        default=None,
+        help="In-point (seconds) where the target clip starts. Default: 0.",
+    )
