@@ -25,7 +25,7 @@ from ytdl.services.playlist.model import (
 from ytdl.shared.errors import PlaylistError
 
 # R55: schema versions this loader understands (PRD-playlist §5.2 ``version``).
-SUPPORTED_PLAYLIST_VERSIONS: frozenset[str] = frozenset({"1.03", "1.04"})
+SUPPORTED_PLAYLIST_VERSIONS: frozenset[str] = frozenset({"1.03", "1.04", "1.05"})
 
 __all__ = ["SUPPORTED_PLAYLIST_VERSIONS", "build_segments", "load_playlist"]
 

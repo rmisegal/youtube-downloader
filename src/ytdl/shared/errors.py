@@ -40,3 +40,9 @@ class PlaylistError(YtdlError):
     """Raised on a malformed or invalid YAML playlist — schema/validation
     error, unsupported version, or a missing member file. Maps to CLI
     exit code 8 (PRD-playlist §9)."""
+
+
+class AudioAnalysisError(YtdlError):
+    """Raised when the beat/structure analyzer cannot process an audio file
+    (decode failure, unreadable/empty audio, or no beats detected). Maps to
+    CLI exit code 9 (PRD-beatsync)."""

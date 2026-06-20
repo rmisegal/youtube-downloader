@@ -13,11 +13,11 @@ def _setup() -> ConfigManager:
     return ConfigManager(file_name="setup.json", config_dir=_REPO_CONFIG)
 
 
-def test_setup_version_1_03_validates() -> None:
+def test_setup_version_validates() -> None:
     cfg = _setup()
 
     cfg.validate_config_version()
-    assert cfg.version == "1.03"
+    assert cfg.version == "1.05"
 
 
 def test_sample_block_defaults() -> None:

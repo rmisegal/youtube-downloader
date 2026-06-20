@@ -94,6 +94,25 @@ LEADING_VIDEO: str = "video"
 LEADING_AUDIO: str = "audio"
 LEADING_KINDS: tuple[str, ...] = (LEADING_NONE, LEADING_VIDEO, LEADING_AUDIO)
 
+# --- Beat-sync audio analysis (PRD-beatsync) ---
+# Analysis tiers (cut-point resolutions).
+TIER_BEAT: str = "beat"
+TIER_BAR: str = "bar"
+TIER_PHRASE: str = "phrase"
+TIER_SECTION: str = "section"
+ANALYSIS_TIERS: tuple[str, ...] = (TIER_BEAT, TIER_BAR, TIER_PHRASE, TIER_SECTION)
+# Heuristic section labels.
+SECTION_INTRO: str = "Intro"
+SECTION_VERSE: str = "Verse"
+SECTION_BUILD: str = "Build-up"
+SECTION_CHORUS: str = "Chorus"
+SECTION_OUTRO: str = "Outro"
+# Playlist sync modes (metadata.sync.mode): ``auto`` = context-aware planner.
+SYNC_AUTO: str = "auto"
+SYNC_MODES: tuple[str, ...] = (SYNC_AUTO, TIER_BEAT, TIER_BAR, TIER_PHRASE, TIER_SECTION)
+# Audio formats the analyzer accepts.
+SUPPORTED_AUDIO_FORMATS: tuple[str, ...] = (".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg")
+
 # --- Environment variable names for optional, user-supplied secrets ---
 ENV_PROXY: str = "YTDL_PROXY"
 ENV_COOKIES_FILE: str = "YTDL_COOKIES_FILE"

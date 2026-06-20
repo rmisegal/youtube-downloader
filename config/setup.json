@@ -1,7 +1,24 @@
 {
-  "version": "1.03",
+  "version": "1.05",
   "paths": {
     "output_dir": "./downloads"
+  },
+  "analysis": {
+    "default_fps": 30,
+    "default_levels": ["beat", "bar", "phrase", "section"],
+    "meter": 4,
+    "phrase_bars": 8,
+    "sample_rate": 22050,
+    "downbeat_backend": "auto",
+    "use_gpu": "auto",
+    "fill_on_phrase_end": true,
+    "section_rules": {
+      "Intro": "phrase",
+      "Verse": "bar",
+      "Build-up": "beat",
+      "Chorus": "beat",
+      "Outro": "phrase"
+    }
   },
   "playback": {
     "default_mode": "option2",
