@@ -93,12 +93,17 @@ class SamplePrep:
         play = segment.play_seconds or 0
         transition = resolve(segment.transition, segment.direction)
         vfilter = image_vfilter(transition, play, (self._width, self._height), self._fps)
+        # CRITICAL: bound the OUTPUT with ``-t`` (after the inputs), NOT the image
+        # input. ``zoompan`` emits ``d`` frames per input frame; an input-side ``-t``
+        # on a looped image multiplies into tens of thousands of frames and the prep
+        # hangs on real (high-res) photos. Output ``-t`` caps it at ``play*fps`` frames.
         return [
             self._ffmpeg.exe(), "-nostdin", "-y",
-            "-loop", "1", "-t", str(play), "-i", segment.path,
+            "-loop", "1", "-i", segment.path,
             "-f", "lavfi", "-t", str(play), "-i", "anullsrc=r=48000:cl=stereo",
             "-map", "0:v:0", "-map", "1:a:0",
             "-vf", vfilter,
+            "-t", str(play),
             "-c:v", "libx264", "-preset", self._preset,
             "-c:a", self._audio_codec,
             "-f", "mpegts", str(out_path),

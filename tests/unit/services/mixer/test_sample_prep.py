@@ -63,6 +63,11 @@ def test_image_command_loops_image_and_animates_with_silent_audio() -> None:
     joined = " ".join(cmd)
     assert "-loop" in cmd and cmd[cmd.index("-loop") + 1] == "1"
     assert "-ss" not in cmd  # images are not seeked
+    # The image input must NOT carry a -t (that explodes zoompan); -loop 1 -> -i.
+    assert cmd[cmd.index("-loop") + 2] == "-i"
+    # The output IS bounded: a -t appears AFTER the image input (output duration).
+    img_i = cmd.index(seg.path)
+    assert "-t" in cmd[img_i:]
     assert "anullsrc=r=48000:cl=stereo" in joined  # synthesized silent audio
     assert "zoompan=" in joined  # the per-image animation
     assert cmd[-3:] == ["-f", "mpegts", "out.ts"]
