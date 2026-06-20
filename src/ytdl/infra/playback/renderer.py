@@ -17,6 +17,7 @@ from ytdl.infra.playback.duration import probe_duration
 from ytdl.infra.playback.renderer_graph import (
     build_audio_graph,
     build_video_graph,
+    bump_indices,
 )
 from ytdl.services.mixer.segment import MixSegment
 
@@ -61,20 +62,27 @@ class MixRenderer:
             argv += ["-ss", _fmt(seg.start), "-t", _fmt(play), "-i", seg.path]
         return argv
 
-    def _codec_out(self, output_path: str) -> list[str]:
-        """Codec flags + output path under the configured container."""
-        return [
-            "-c:v",
-            self._video_codec,
-            "-c:a",
-            self._audio_codec,
-            str(output_path),
-        ]
+    def _codec_out(self, output_path: str, fmt: str | None = None) -> list[str]:
+        """Codec flags (+ optional ``-f`` muxer) and the output target."""
+        out = ["-c:v", self._video_codec, "-c:a", self._audio_codec]
+        if fmt:
+            out += ["-f", fmt]
+        out.append(str(output_path))
+        return out
 
     def build_command(
-        self, segments: Sequence[MixSegment], output_path: str, *, crossfade: float
+        self,
+        segments: Sequence[MixSegment],
+        output_path: str,
+        *,
+        crossfade: float,
+        container: str | None = None,
     ) -> list[str]:
-        """Full N-input xfade+acrossfade render command (no leading track)."""
+        """Full N-input xfade+acrossfade render command (no leading track).
+
+        ``container`` forces an output muxer (e.g. ``"mpegts"`` with
+        ``output_path="pipe:1"`` to stream into ``vlc -``).
+        """
         durations = self._durations(segments)
         vsteps, vlabel = build_video_graph(segments, durations, crossfade)
         asteps, alabel = build_audio_graph(segments, durations, crossfade)
@@ -89,7 +97,7 @@ class MixRenderer:
             f"[{vlabel}]",
             "-map",
             f"[{alabel}]",
-            *self._codec_out(output_path),
+            *self._codec_out(output_path, container),
         ]
 
     def build_leading_command(
@@ -119,7 +127,7 @@ class MixRenderer:
     def _shifted(builder, segments, durations, crossfade):  # type: ignore[no-untyped-def]
         """Build a member graph whose input indices start at 1 (leading is 0)."""
         steps, label = builder(segments, durations, crossfade)
-        return [_bump_indices(s, len(segments)) for s in steps], label
+        return [bump_indices(s, len(segments)) for s in steps], label
 
     def _assemble(self, lead_in, segments, durations, graph, vmap, amap, output_path):  # type: ignore[no-untyped-def]
         """Combine leading input, members, graph and pre-formatted maps into argv."""
@@ -157,11 +165,3 @@ class MixRenderer:
             command = self.build_command(segments, output_path, crossfade=crossfade)
         self._runner(command)
         return output_path
-
-
-def _bump_indices(step: str, count: int) -> str:
-    """Shift input-stream indices ``[i:v]``/``[i:a]`` up by one for a leading track."""
-    out = step
-    for i in reversed(range(count)):
-        out = out.replace(f"[{i}:v]", f"[{i + 1}:v]").replace(f"[{i}:a]", f"[{i + 1}:a]")
-    return out

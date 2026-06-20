@@ -95,3 +95,11 @@ def build_audio_graph(segments: Sequence[MixSegment], durations: Sequence[float]
     offsets = _offsets(segments, durations, crossfade)
     chain, label = _chain([f"a{i}" for i in range(len(segments))], offsets, segments[0].effect, crossfade, "a")
     return norms + chain, label
+
+
+def bump_indices(step: str, count: int) -> str:
+    """Shift input-stream indices ``[i:v]``/``[i:a]`` up by one for a leading track."""
+    out = step
+    for i in reversed(range(count)):
+        out = out.replace(f"[{i}:v]", f"[{i + 1}:v]").replace(f"[{i}:a]", f"[{i + 1}:a]")
+    return out

@@ -14,11 +14,11 @@ def _ffmpeg() -> MagicMock:
     return loc
 
 
-def test_run_segments_streams_each_pair_with_segment_timing() -> None:
-    stream = MagicMock()
-    engine = Option1Engine(
-        stream_server=stream, ffmpeg=_ffmpeg(), duration_fn=lambda *_a: 999.0
-    )
+def test_run_segments_streams_one_continuous_graph_into_single_vlc() -> None:
+    renderer = MagicMock()
+    renderer.build_command.return_value = ["ffmpeg", "...", "pipe:1"]
+    runner = MagicMock()
+    engine = Option1Engine(ffmpeg=_ffmpeg(), renderer=renderer, runner=runner)
     segs = [
         MixSegment("a.mp4", start=5.0, play_seconds=10.0),
         MixSegment("b.mp4", start=2.0, play_seconds=8.0),
@@ -26,37 +26,28 @@ def test_run_segments_streams_each_pair_with_segment_timing() -> None:
     ]
     engine.run_segments(segs, crossfade=3, vlc_binary="/usr/bin/vlc")
 
-    assert stream.stream_pair.call_count == 2  # (a->b), (b->c)
-    first = stream.stream_pair.call_args_list[0]
-    assert first.args == ("a.mp4", "b.mp4")
-    assert first.kwargs["source_mix_time"] == 15.0  # start 5 + play 10
-    assert first.kwargs["target_start_time"] == 2.0  # next seg's start
-    assert first.kwargs["crossfade"] == 3
-    assert first.kwargs["vlc_binary"] == "/usr/bin/vlc"
-
-
-def test_run_segments_none_play_seconds_uses_probed_duration() -> None:
-    stream = MagicMock()
-    engine = Option1Engine(
-        stream_server=stream, ffmpeg=_ffmpeg(), duration_fn=lambda *_a: 40.0
-    )
-    segs = [
-        MixSegment("a.mp4", start=6.0, play_seconds=None),
-        MixSegment("b.mp4", start=0.0, play_seconds=5.0),
-    ]
-    engine.run_segments(segs, crossfade=2)
-
-    kw = stream.stream_pair.call_args.kwargs
-    assert kw["source_mix_time"] == 46.0  # start 6 + probed 40
-    assert kw["target_start_time"] == 0.0
+    # ONE continuous graph built over ALL segments (not pairwise spawns).
+    renderer.build_command.assert_called_once()
+    args, kwargs = renderer.build_command.call_args
+    assert list(args[0]) == segs
+    assert args[1] == "pipe:1"
+    assert kwargs["crossfade"] == 3
+    assert kwargs["container"] == "mpegts"
+    # ffmpeg + exactly one `vlc -` reading the pipe; waits for playback to end.
+    assert runner.call_count == 2
+    ffmpeg_call, vlc_call = runner.call_args_list
+    assert ffmpeg_call.kwargs.get("stdout") is not None
+    assert vlc_call.args[0] == ["/usr/bin/vlc", "-"]
+    runner.return_value.wait.assert_called_once()
 
 
 def test_run_segments_single_segment_does_not_stream() -> None:
-    stream = MagicMock()
-    Option1Engine(stream_server=stream, ffmpeg=_ffmpeg()).run_segments(
+    renderer, runner = MagicMock(), MagicMock()
+    Option1Engine(ffmpeg=_ffmpeg(), renderer=renderer, runner=runner).run_segments(
         [MixSegment("only.mp4", start=1.0, play_seconds=3.0)], crossfade=3
     )
-    stream.stream_pair.assert_not_called()
+    renderer.build_command.assert_not_called()
+    runner.assert_not_called()
 
 
 def _matrix_with_distinct_players() -> MagicMock:

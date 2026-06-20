@@ -9,6 +9,7 @@ mix-out point = ``duration − crossfade``), and configure the underlying engine
 
 from __future__ import annotations
 
+import subprocess
 import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -18,7 +19,8 @@ from typing import Any
 from ytdl.infra.ffmpeg import FfmpegLocator
 from ytdl.infra.playback.duration import probe_duration
 from ytdl.infra.playback.libvlc_matrix import LibVlcPlayerMatrix
-from ytdl.infra.playback.stream_server import StreamServer
+from ytdl.infra.playback.renderer import MixRenderer
+from ytdl.infra.playback.stream_server import DEFAULT_VLC_BINARY, StreamServer
 from ytdl.services.mixer.segment import MixSegment
 
 
@@ -40,10 +42,14 @@ class Option1Engine:
         stream_server: StreamServer | None = None,
         ffmpeg: FfmpegLocator | None = None,
         duration_fn: Callable[..., float] = probe_duration,
+        renderer: MixRenderer | None = None,
+        runner: Callable[..., Any] = subprocess.Popen,
     ) -> None:
         self._ffmpeg = ffmpeg or FfmpegLocator()
         self._stream = stream_server or StreamServer(self._ffmpeg)
         self._duration_fn = duration_fn
+        self._renderer = renderer or MixRenderer(self._ffmpeg)
+        self._runner = runner
 
     def run(
         self,
@@ -75,19 +81,21 @@ class Option1Engine:
         crossfade: float,
         vlc_binary: str | None = None,
     ) -> None:
-        """Stream each consecutive segment pair with per-clip in/mix points."""
-        for index in range(len(segments) - 1):
-            source, target = segments[index], segments[index + 1]
-            mix = _segment_mix_point(source, self._duration_fn, self._ffmpeg)
-            self._stream.stream_pair(
-                source.path,
-                target.path,
-                crossfade=crossfade,
-                source_duration=mix,
-                source_mix_time=mix,
-                target_start_time=target.start,
-                vlc_binary=vlc_binary,
-            )
+        """Stream ONE continuous xfade graph of all segments into a single VLC window.
+
+        Builds the same continuous FFmpeg graph the renderer uses (per-clip
+        ``-ss start -t play`` + cumulative ``xfade``/``acrossfade``) but muxed as
+        ``mpegts`` to stdout, piped into a single ``vlc -`` process — no
+        multiple-window spawning — and waits for playback to finish.
+        """
+        if len(segments) < 2:
+            return
+        command = self._renderer.build_command(
+            list(segments), "pipe:1", crossfade=crossfade, container="mpegts"
+        )
+        ffmpeg_proc = self._runner(command, stdout=subprocess.PIPE)
+        vlc_proc = self._runner([vlc_binary or DEFAULT_VLC_BINARY, "-"], stdin=ffmpeg_proc.stdout)
+        vlc_proc.wait()
 
 
 class Option2Engine:
