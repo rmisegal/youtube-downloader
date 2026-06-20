@@ -95,6 +95,8 @@ uv run python -m ytdl --mix --dir "<PATH>" [--mode option1|option2] [--selection
 | `--mode` | str | `option2` (config `playback.default_mode`) | `option1` (FFmpeg→VLC stream, true crossfade) or `option2` (dual-libVLC gapless). |
 | `--selection` | str | `random` (config `playback.default_selection`) | `random` (infinite shuffle) or `manual` (numbered picker). |
 | `--crossfade-time` | int | `3` (config `playback.crossfade_duration_seconds`) | Crossfade overlap window in seconds. |
+| `--source-mix-time` | float | unset → source end (`duration − crossfade-time`) | Absolute position (seconds) in the **source** clip where the crossfade begins. Lets a clip mix out early instead of at its end. Falls back to the natural end if the clip is shorter than this. |
+| `--target-start-time` | float | `0` (config `playback.target_start_time_seconds`) | In-point (seconds) of the **target** clip — where the next track starts playing / aligns into the crossfade. Default = start of the movie. |
 
 `--mix` is mutually independent from the download flags; when `--mix` is present the download flags are ignored
 (the SDK routes to the mixer). `--dir` is required in mix mode (missing → usage error, **exit 2**).
@@ -129,7 +131,10 @@ uv run python -m ytdl --mix --dir "<PATH>" [--mode option1|option2] [--selection
 #### 4.3.1 Option 1 — Live FFmpeg→VLC streaming server (TRUE crossfade)
 - A background worker launches an FFmpeg subprocess using the bundled binary (`FfmpegLocator`).
 - It consumes sequential tracks from the FIFO queue, joining video with the `xfade` filter
-  (`transition=fade`, offset derived from track duration − `crossfade-time`) and audio with `acrossfade`.
+  (`transition=fade`) and audio with `acrossfade`. The xfade **`offset` = `--source-mix-time`** (default
+  `source_duration − crossfade-time`, i.e. the source end), and the **target input is seeked to
+  `--target-start-time`** (`ffmpeg -ss <target-start> -i <next>`, default `0`). So the blend runs from
+  source@mix-time into target@start-time over the `crossfade-time` window.
 - The composite is muxed as `mpegts` and written to the **stdin** of a standalone `vlc -` process.
 - **Result:** VLC plays an un-seekable, infinite live broadcast with no black frame or load gap between tracks.
 - *Implementation note (risk):* continuous `xfade` across an arbitrary, growing FIFO requires careful pipeline
@@ -138,9 +143,10 @@ uv run python -m ytdl --mix --dir "<PATH>" [--mode option1|option2] [--selection
 #### 4.3.2 Option 2 — Dual-libVLC player matrix (gapless switching)
 - Create two `python-vlc` players (`Player_A`, `Player_B`). While A displays the current track, B silently
   pre-loads the next track (muted, hidden).
-- A polling loop tracks remaining runtime; when it reaches `crossfade-time`, the decks hand off with an
-  **audio** volume crossfade (A: 100→0, B: 0→100) plus a window-overlap visual handoff; then A stops and
-  becomes the background buffer for the subsequent track.
+- Before B plays, it **seeks to `--target-start-time`** (its in-point). A polling loop watches A's playback
+  position; when it reaches **`--source-mix-time`** (default `duration − crossfade-time`), the decks hand off
+  over the `crossfade-time` window with an **audio** volume crossfade (A: 100→0, B: 0→100) plus a
+  window-overlap visual handoff; then A stops and becomes the background buffer for the next track.
 - **Limitation (documented, not a defect):** libVLC does not natively alpha-composite two independent video
   windows, so Option 2 provides **gapless switching with audio crossfade**, not per-pixel video blending. For
   true video+audio frame crossfade, use Option 1.
@@ -157,10 +163,15 @@ uv run python -m ytdl --mix --dir "<PATH>" [--mode option1|option2] [--selection
     "default_mode": "option2",
     "default_selection": "random",
     "crossfade_duration_seconds": 3,
+    "source_mix_time_seconds": null,
+    "target_start_time_seconds": 0,
     "supported_video_formats": [".mp4", ".mkv", ".mov", ".avi"]
   }
 }
 ```
+`source_mix_time_seconds: null` means "use the source's natural end" (the default); a number overrides
+the mix-out point. `target_start_time_seconds` is the default target in-point. Both are overridable per run
+via `--source-mix-time` / `--target-start-time`.
 All playback tunables are read via `ConfigManager.get("playback.<key>", default)` (Rule 11). The
 authoritative supported-format tuple lives in `constants.py`; the config list mirrors it for user override.
 
