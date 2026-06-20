@@ -59,4 +59,10 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print code + config version and exit.",
     )
+    parser.add_argument(
+        "-command",
+        "--command",
+        action="store_true",
+        help="Show the run-command cheat-sheet (with examples) and exit.",
+    )
     return parser

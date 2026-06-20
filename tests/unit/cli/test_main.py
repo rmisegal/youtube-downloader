@@ -122,6 +122,31 @@ def test_success_returns_zero() -> None:
     assert _run([URL], sdk) == cli.EXIT_SUCCESS
 
 
+def test_command_lists_run_commands_with_examples(capsys) -> None:
+    """``--command`` prints the run-command cheat-sheet and returns 0."""
+    code = cli.main(["--command"])
+    out = capsys.readouterr().out
+    assert code == cli.EXIT_SUCCESS
+    assert "uv run python -m ytdl" in out
+    assert "--audio" in out
+    assert "--subs" in out
+
+
+def test_command_single_dash_alias_works(capsys) -> None:
+    """``-command`` (single dash, as requested) is accepted as an alias."""
+    code = cli.main(["-command"])
+    assert code == cli.EXIT_SUCCESS
+    assert "uv run python -m ytdl" in capsys.readouterr().out
+
+
+def test_command_does_not_require_url() -> None:
+    """``--command`` short-circuits before the URL-required check (no SDK call)."""
+    sdk = MagicMock()
+    code = _run(["--command"], sdk)
+    assert code == cli.EXIT_SUCCESS
+    sdk.download.assert_not_called()
+
+
 def test_io_reconfigure_guarded() -> None:
     """_configure_io tolerates streams without reconfigure (no crash)."""
     cli._configure_io()  # smoke: must not raise in test environment

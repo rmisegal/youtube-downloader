@@ -73,6 +73,12 @@ Print the code + config version and exit:
 uv run python -m ytdl --version
 ```
 
+Show the run-command cheat-sheet (all commands with examples) and exit:
+
+```powershell
+uv run python -m ytdl --command
+```
+
 `--video`, `--audio`, and `--subs` are **independent toggles**; any combination is valid in a single
 run, and the video is fetched only once. If **none** of them is supplied, the tool defaults to
 `--video`.
@@ -95,6 +101,7 @@ Taken verbatim from the argparse definition in
 | `--resolution` | Max video height, e.g. `1080` or `720` (int). | best available |
 | `--sub-lang` | Subtitle language code. | `en` |
 | `--version` | Print code + config version and exit. | — |
+| `-command`, `--command` | Show the run-command cheat-sheet (commands + examples) and exit. | — |
 
 ---
 

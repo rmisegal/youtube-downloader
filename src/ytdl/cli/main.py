@@ -13,6 +13,7 @@ import logging
 import sys
 
 from ytdl.cli.args import build_parser
+from ytdl.cli.usage import commands_text
 from ytdl.sdk.sdk import YoutubeDownloaderSDK
 from ytdl.shared.config import ConfigManager
 from ytdl.shared.errors import (
@@ -50,6 +51,12 @@ def _configure_logging() -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         stream=sys.stderr,
     )
+
+
+def _print_commands() -> int:
+    """Print the run-command cheat-sheet and return success (``--command``)."""
+    print(commands_text())
+    return EXIT_SUCCESS
 
 
 def _print_version() -> int:
@@ -102,6 +109,8 @@ def main(argv: list[str] | None = None) -> int:
     _configure_io()
     _configure_logging()
     args = build_parser().parse_args(argv)
+    if args.command:
+        return _print_commands()
     if args.version:
         return _print_version()
     if not args.url:
