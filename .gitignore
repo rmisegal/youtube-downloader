@@ -1,0 +1,20 @@
+# Secrets & user-supplied auth
+.env
+cookies.txt
+*.key
+*.pem
+
+# Downloads (runtime output)
+downloads/
+
+# Python
+__pycache__/
+*.pyc
+
+# Test & coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environment
+.venv/

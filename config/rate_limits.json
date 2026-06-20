@@ -1,0 +1,27 @@
+{
+  "version": "1.00",
+  "rate_limits": {
+    "services": {
+      "youtube": {
+        "requests_per_minute": 20,
+        "concurrent_max": 2,
+        "burst_size": 5,
+        "burst_window_seconds": 10,
+        "retry_after_seconds": 30,
+        "max_retries": 3
+      }
+    },
+    "default": {
+      "requests_per_minute": 30,
+      "concurrent_max": 5,
+      "retry_after_seconds": 30,
+      "max_retries": 3
+    }
+  },
+  "queue": {
+    "max_depth": 100,
+    "drain_interval_seconds": 1,
+    "timeout_seconds": 300,
+    "overflow_strategy": "reject_oldest"
+  }
+}

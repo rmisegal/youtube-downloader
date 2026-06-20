@@ -1,0 +1,43 @@
+[project]
+name = "youtube-downloader"
+version = "1.00"
+description = "Windows PowerShell CLI to download YouTube video (mp4), audio (mp3), and subtitles (srt) via yt-dlp + imageio-ffmpeg."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "yt-dlp",
+    "imageio-ffmpeg",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ytdl"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/main.py"]
+
+[tool.coverage.report]
+fail_under = 85
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

@@ -1,0 +1,22 @@
+{
+  "version": "1.00",
+  "paths": {
+    "output_dir": "./downloads"
+  },
+  "defaults": {
+    "resolution": null,
+    "sub_lang": "en",
+    "modes": ["video"]
+  },
+  "audio": {
+    "codec": "mp3",
+    "quality": "192"
+  },
+  "subtitles": {
+    "format": "srt",
+    "include_auto": true
+  },
+  "ffmpeg": {
+    "location": "auto"
+  }
+}
