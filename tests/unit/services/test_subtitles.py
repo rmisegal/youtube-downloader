@@ -1,6 +1,6 @@
 """Unit tests for :class:`ytdl.services.subtitles.SubtitleDownloader`.
 
-``FfmpegLocator.exe_dir`` is patched to a fake dir; the config is driven via an
+``FfmpegLocator.exe`` is patched to a fake dir; the config is driven via an
 in-memory :class:`ConfigManager` — no real FFmpeg, no network.
 """
 
@@ -31,7 +31,7 @@ def _build(
     name: str | None = "sample",
     **kwargs: Any,
 ) -> dict[str, Any]:
-    with patch("ytdl.infra.ffmpeg.FfmpegLocator.exe_dir", return_value=FAKE_DIR):
+    with patch("ytdl.infra.ffmpeg.FfmpegLocator.exe", return_value=FAKE_DIR):
         return dl.build_opts(OUT_DIR, name, **kwargs)
 
 

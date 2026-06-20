@@ -1,6 +1,6 @@
 """Unit tests for :class:`ytdl.services.video.VideoDownloader`.
 
-``FfmpegLocator.exe_dir`` is patched to a fake dir and env vars are cleared via
+``FfmpegLocator.exe`` is patched to a fake dir and env vars are cleared via
 ``monkeypatch`` — no real FFmpeg, no network. The tests assert both the
 video-specific ``_mode_opts`` hook and that it composes with the base options
 through ``build_opts``.
@@ -32,7 +32,7 @@ def downloader(monkeypatch: pytest.MonkeyPatch) -> VideoDownloader:
 
 
 def _build(dl: VideoDownloader, **kwargs: Any) -> dict[str, Any]:
-    with patch("ytdl.infra.ffmpeg.FfmpegLocator.exe_dir", return_value=FAKE_DIR):
+    with patch("ytdl.infra.ffmpeg.FfmpegLocator.exe", return_value=FAKE_DIR):
         return dl.build_opts(OUT_DIR, "sample", **kwargs)
 
 

@@ -53,7 +53,7 @@ class BaseDownloader:
         tail = OUTTMPL_TEMPLATE.format(name=name) if name else DEFAULT_NAME_TEMPLATE
         opts: dict[str, Any] = {
             "outtmpl": str(Path(output_dir) / tail),
-            "ffmpeg_location": self._ffmpeg.exe_dir(),
+            "ffmpeg_location": self._ffmpeg.exe(),
         }
         proxy = os.environ.get(ENV_PROXY)
         if proxy:

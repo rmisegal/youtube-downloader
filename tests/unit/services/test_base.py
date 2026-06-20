@@ -1,6 +1,6 @@
 """Unit tests for :class:`ytdl.services.base.BaseDownloader`.
 
-``FfmpegLocator.exe_dir`` is patched to a fake dir and env vars are driven via
+``FfmpegLocator.exe`` is patched to a fake path and env vars are driven via
 ``monkeypatch`` — no real FFmpeg, no network.
 """
 
@@ -18,6 +18,7 @@ from ytdl.services.base import BaseDownloader
 from ytdl.shared.config import ConfigManager
 
 FAKE_DIR = os.path.join(os.sep, "fake", "bin")
+FAKE_EXE = os.path.join(FAKE_DIR, "ffmpeg-win-x86_64-v7.1.exe")
 OUT_DIR = os.path.join(os.sep, "out")
 
 
@@ -30,7 +31,7 @@ def downloader(monkeypatch: pytest.MonkeyPatch) -> BaseDownloader:
 
 
 def _build(dl: BaseDownloader, output_dir: str, name: str | None) -> dict[str, Any]:
-    with patch("ytdl.infra.ffmpeg.FfmpegLocator.exe_dir", return_value=FAKE_DIR):
+    with patch("ytdl.infra.ffmpeg.FfmpegLocator.exe", return_value=FAKE_EXE):
         return dl.build_base_opts(output_dir, name)
 
 
@@ -48,9 +49,10 @@ def test_outtmpl_falls_back_to_title_template(downloader: BaseDownloader) -> Non
 
 
 def test_ffmpeg_location_wired_from_locator(downloader: BaseDownloader) -> None:
-    """``ffmpeg_location`` comes from the locator's ``exe_dir``."""
+    """``ffmpeg_location`` is the locator's full exe path (yt-dlp needs the file,
+    because imageio-ffmpeg's binary is not named ``ffmpeg.exe``)."""
     opts = _build(downloader, OUT_DIR, "x")
-    assert opts["ffmpeg_location"] == FAKE_DIR
+    assert opts["ffmpeg_location"] == FAKE_EXE
 
 
 def test_proxy_present_when_env_set(
@@ -116,10 +118,10 @@ def test_build_opts_merges_base_and_mode_override(
             return {"format": "bv*+ba/b", "merge_output_format": "mp4"}
 
     dl = _Stub(ConfigManager(data={"version": "1.00"}))
-    with patch("ytdl.infra.ffmpeg.FfmpegLocator.exe_dir", return_value=FAKE_DIR):
+    with patch("ytdl.infra.ffmpeg.FfmpegLocator.exe", return_value=FAKE_EXE):
         opts = dl.build_opts(OUT_DIR, "sample")
     assert opts["outtmpl"] == str(Path(OUT_DIR) / "sample.%(ext)s")
-    assert opts["ffmpeg_location"] == FAKE_DIR
+    assert opts["ffmpeg_location"] == FAKE_EXE
     assert opts["format"] == "bv*+ba/b"
     assert opts["merge_output_format"] == "mp4"
 

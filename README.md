@@ -253,3 +253,11 @@ The following are **explicitly out of scope for v1.00** and listed here only for
 > **Removable-drive safety note (for future maintainers):** any future re-consultation of the
 > knowledge graph that lives on the **D: USB drive** must first verify `Test-Path D:\` and stop if
 > the drive is absent — blind access to a missing removable drive hangs. This is not part of v1.00.
+
+## Known limitations (v1.00)
+
+- When **both** `--video` and `--audio` are requested in the same run, yt-dlp's
+  `keepvideo` (required so audio extraction does not delete the merged mp4) also
+  leaves the intermediate per-stream files (e.g. `name.f137.mp4`, `name.f251.webm`)
+  next to the final `name.mp4` / `name.mp3`. The required outputs are correct; the
+  intermediates are harmless leftovers. Automatic cleanup is planned for a future release.

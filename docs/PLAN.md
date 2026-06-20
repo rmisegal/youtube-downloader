@@ -130,7 +130,7 @@ Detailed enforcement and automated checks: §10.
   4.1 `shared/rate_limit.py` `RateLimiter` (sliding-window/token-bucket; limits from config). (R27)
   4.2 `shared/queue.py` `DownloadQueue` (FIFO, `max_depth`, drain, `overflow_strategy`). (R28)
   4.3 `shared/gatekeeper.py` `ApiGatekeeper.execute(callable, ...)` → rate check → retry/backoff (`max_retries`, `retry_after_seconds`) → logging → queue overflow. (R26)
-  4.4 `infra/ffmpeg.py` `FfmpegLocator.exe_dir()` wrapping `imageio_ffmpeg.get_ffmpeg_exe()`. (R20)
+  4.4 `infra/ffmpeg.py` `FfmpegLocator` wrapping `imageio_ffmpeg.get_ffmpeg_exe()` — exposes `exe()` (full path; yt-dlp `ffmpeg_location` needs the file, not the dir, because the imageio binary is not named `ffmpeg.exe`) and `exe_dir()`. (R20)
   4.5 `infra/ytdlp_client.py` thin `yt_dlp.YoutubeDL` wrapper; **all** `extract_info`/`download` calls routed through `ApiGatekeeper`. (R26)
   4.6 `services/base.py` `BaseDownloader` — shared ydl-opts builder, `outtmpl`, `ffmpeg_location` wiring (single source for subclasses). (R25)
   4.7 Consume optional `YTDL_PROXY` → yt-dlp `proxy` and `YTDL_COOKIES_FILE` → yt-dlp `cookiefile` from environment; omit each when unset. (R44, PRD §2 A1/§6.4, Rule 11)

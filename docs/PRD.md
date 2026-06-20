@@ -179,7 +179,9 @@ opts.update({
 })
 
 # Common
-opts["ffmpeg_location"] = FfmpegLocator().exe_dir()      # imageio_ffmpeg.get_ffmpeg_exe() parent dir
+opts["ffmpeg_location"] = FfmpegLocator().exe()          # FULL path to imageio-ffmpeg binary
+# NOTE: pass the full binary PATH, not the dir — imageio-ffmpeg's binary is named
+# `ffmpeg-win-x86_64-vX.Y.exe`, so a directory would make yt-dlp report "ffmpeg not installed".
 opts["outtmpl"] = str(Path(output_dir) / f"{name}.%(ext)s")
 ```
 

@@ -1,6 +1,6 @@
 """Unit tests for :class:`ytdl.services.audio.AudioDownloader`.
 
-``FfmpegLocator.exe_dir`` is patched to a fake dir; the config is driven via an
+``FfmpegLocator.exe`` is patched to a fake dir; the config is driven via an
 in-memory :class:`ConfigManager` — no real FFmpeg, no network.
 """
 
@@ -27,7 +27,7 @@ def _make(audio: dict[str, Any] | None = None) -> AudioDownloader:
 
 
 def _build(dl: AudioDownloader, name: str | None = "sample") -> dict[str, Any]:
-    with patch("ytdl.infra.ffmpeg.FfmpegLocator.exe_dir", return_value=FAKE_DIR):
+    with patch("ytdl.infra.ffmpeg.FfmpegLocator.exe", return_value=FAKE_DIR):
         return dl.build_opts(OUT_DIR, name)
 
 
