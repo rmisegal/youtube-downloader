@@ -273,32 +273,32 @@
 ## Phase 9 — Security Review
 **Objective:** No secrets in source; secret hygiene complete. | **Plan refs:** §6.4 | **Rules:** 13
 
-- [ ] Run secret-scan over `src/` (Plan Phase 9.1, Rule #13)
-- [ ] Confirm no API keys/tokens/passwords in source (Plan Phase 9.1, R33, Rule #13)
-- [ ] Confirm `.env`, `cookies.txt`, `*.key`, `*.pem` git-ignored (Plan Phase 9.2, R33)
-- [ ] Confirm `.env-example` committed with placeholders only (Plan Phase 9.2, R33, Rule #13)
-- [ ] Verify optional proxy/cookies read from env, never hardcoded (Plan Gate 9 functional, R32)
-- [ ] Phase 9 Gate — secret scan clean (Plan Gate 9, Rule #13)
-- [ ] Phase 9 Gate — `.env-example` present (Plan Gate 9, Rule #13)
-- [ ] Phase 9 Gate — run secret-scan script + `.gitignore` check (Plan Gate 9 automated)
-- [ ] Phase 9 Commit — `chore(security): secret scan + env hygiene verified` (Rule #6,#13)
+- [x] Run secret-scan over `src/` (Plan Phase 9.1, Rule #13)
+- [x] Confirm no API keys/tokens/passwords in source (Plan Phase 9.1, R33, Rule #13)
+- [x] Confirm `.env`, `cookies.txt`, `*.key`, `*.pem` git-ignored (Plan Phase 9.2, R33)
+- [x] Confirm `.env-example` committed with placeholders only (Plan Phase 9.2, R33, Rule #13)
+- [x] Verify optional proxy/cookies read from env, never hardcoded (Plan Gate 9 functional, R32)
+- [x] Phase 9 Gate — secret scan clean (Plan Gate 9, Rule #13)
+- [x] Phase 9 Gate — `.env-example` present (Plan Gate 9, Rule #13)
+- [x] Phase 9 Gate — run secret-scan script + `.gitignore` check (Plan Gate 9 automated)
+- [x] Phase 9 Commit — `chore(security): secret scan + env hygiene verified` (Rule #6,#13)
 
 ---
 
 ## Phase 10 — Documentation & Deliverables
 **Objective:** README + authoritative PRD/PLAN + future scope. | **Plan refs:** §4 tree,§11 | **Rules:** 14
 
-- [ ] Write `README.md` install section (`uv sync`) (Plan Phase 10.1, R41, Rule #14)
-- [ ] Write `README.md` PowerShell usage examples (Plan Phase 10.1, R41)
-- [ ] Write `README.md` flags table (Plan Phase 10.1, R41)
-- [ ] Write `README.md` config overview (Plan Phase 10.1, R41)
-- [ ] Confirm `docs/PRD.md` present and authoritative (Plan Phase 10.2, R41)
-- [ ] Confirm `docs/PLAN.md` present and authoritative (Plan Phase 10.2, R41)
-- [ ] Document future GPU/transcription pattern (cuda_libs in place, never copied) (Plan Phase 10.2, R43)
-- [ ] Document future D: drive-safety guard for graph re-consult (Plan §3 R4 risk, R22)
-- [ ] Phase 10 Gate — README commands run as written (Plan Gate 10 functional)
-- [ ] Phase 10 Gate — docs reference uv-only commands (Plan Gate 10, Rule #14)
-- [ ] Phase 10 Commit — `docs: README, future scope, drive-safety note` (Rule #6)
+- [x] Write `README.md` install section (`uv sync`) (Plan Phase 10.1, R41, Rule #14)
+- [x] Write `README.md` PowerShell usage examples (Plan Phase 10.1, R41)
+- [x] Write `README.md` flags table (Plan Phase 10.1, R41)
+- [x] Write `README.md` config overview (Plan Phase 10.1, R41)
+- [x] Confirm `docs/PRD.md` present and authoritative (Plan Phase 10.2, R41)
+- [x] Confirm `docs/PLAN.md` present and authoritative (Plan Phase 10.2, R41)
+- [x] Document future GPU/transcription pattern (cuda_libs in place, never copied) (Plan Phase 10.2, R43)
+- [x] Document future D: drive-safety guard for graph re-consult (Plan §3 R4 risk, R22)
+- [x] Phase 10 Gate — README commands run as written (Plan Gate 10 functional)
+- [x] Phase 10 Gate — docs reference uv-only commands (Plan Gate 10, Rule #14)
+- [x] Phase 10 Commit — `docs: README, future scope, drive-safety note` (Rule #6)
 
 ---
 
