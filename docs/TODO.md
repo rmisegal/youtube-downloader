@@ -190,22 +190,22 @@
 ## Phase 6 — SDK / API Surface
 **Objective:** Expose every op via `YoutubeDownloaderSDK`; fetch-once for combined modes. | **Plan refs:** §4.1,§5 | **Rules:** 1,2,7
 
-- [ ] RED: failing test for `YoutubeDownloaderSDK.download(...)` signature/params (Plan Phase 6.1, R24, Rule #7)
-- [ ] RED: failing test for per-mode SDK methods (video/audio/subs) (Plan Phase 6.1, R24, Rule #7)
-- [ ] RED: failing test that combined modes resolve info once (Plan Phase 6.2, R12, Rule #7)
-- [ ] RED: failing test that combined modes build union of postprocessors (Plan Phase 6.2, R12, Rule #7)
-- [ ] RED: failing test that no output flags → defaults to video (Plan Phase 6.2, R5, Rule #7)
-- [ ] GREEN: implement `sdk/sdk.py` `YoutubeDownloaderSDK` (Plan Phase 6.1, R24, Rule #1,#8)
-- [ ] GREEN: implement combinability (resolve once + union PP) (Plan Phase 6.2, R5,R12)
-- [ ] GREEN: ensure SDK is only externally-imported object (Plan Phase 6.3, R24, Rule #1)
-- [ ] REFACTOR: dedupe SDK→service wiring; tests green (Plan Phase 6, Rule #2)
-- [ ] Write docstrings for every public SDK method (Plan §4, Rule #1)
-- [ ] Phase 6 Gate — combined `--video --audio --subs` = single resolve + union PP (Plan Gate 6 functional)
-- [ ] Phase 6 Gate — default-video honored when no flags (Plan Gate 6 functional)
-- [ ] Phase 6 Gate — all ops reachable via SDK without importing internals (Plan Gate 6, Rule #1)
-- [ ] Phase 6 Gate — run `uv run pytest tests/unit/sdk` (Plan Gate 6 automated)
-- [ ] Phase 6 Gate — run ruff + file-size + coverage checks (Plan Gate 6, Rule #8,#9,#10)
-- [ ] Phase 6 Commit — `feat(sdk): single-entry SDK with fetch-once combinability` (Rule #1,#6)
+- [x] RED: failing test for `YoutubeDownloaderSDK.download(...)` signature/params (Plan Phase 6.1, R24, Rule #7)
+- [x] RED: failing test for per-mode SDK methods (video/audio/subs) (Plan Phase 6.1, R24, Rule #7)
+- [x] RED: failing test that combined modes resolve info once (Plan Phase 6.2, R12, Rule #7)
+- [x] RED: failing test that combined modes build union of postprocessors (Plan Phase 6.2, R12, Rule #7)
+- [x] RED: failing test that no output flags → defaults to video (Plan Phase 6.2, R5, Rule #7)
+- [x] GREEN: implement `sdk/sdk.py` `YoutubeDownloaderSDK` (Plan Phase 6.1, R24, Rule #1,#8)
+- [x] GREEN: implement combinability (resolve once + union PP) (Plan Phase 6.2, R5,R12)
+- [x] GREEN: ensure SDK is only externally-imported object (Plan Phase 6.3, R24, Rule #1)
+- [x] REFACTOR: dedupe SDK→service wiring; tests green (Plan Phase 6, Rule #2)
+- [x] Write docstrings for every public SDK method (Plan §4, Rule #1)
+- [x] Phase 6 Gate — combined `--video --audio --subs` = single resolve + union PP (Plan Gate 6 functional)
+- [x] Phase 6 Gate — default-video honored when no flags (Plan Gate 6 functional)
+- [x] Phase 6 Gate — all ops reachable via SDK without importing internals (Plan Gate 6, Rule #1)
+- [x] Phase 6 Gate — run `uv run pytest tests/unit/sdk` (Plan Gate 6 automated)
+- [x] Phase 6 Gate — run ruff + file-size + coverage checks (Plan Gate 6, Rule #8,#9,#10)
+- [x] Phase 6 Commit — `feat(sdk): single-entry SDK with fetch-once combinability` (Rule #1,#6)
 
 ---
 
