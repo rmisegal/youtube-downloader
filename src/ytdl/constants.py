@@ -46,6 +46,27 @@ MERGE_OUTPUT_FORMAT: str = "mp4"
 PP_EXTRACT_AUDIO: str = "FFmpegExtractAudio"
 PP_CONVERT_SUBS: str = "FFmpegSubtitlesConvertor"
 
+# --- Sampler / playlist names (PRD-playlist §2-§6) ---
+# Numeric sampler/render tunables live in config (sample.*/render.*); only stable
+# string identifiers belong here.
+# Transition / mix effect names.
+EFFECT_FADE: str = "fade"
+# Playlist output-mode names (metadata.output toggles).
+OUTPUT_DISPLAY: str = "display"
+OUTPUT_SAVE: str = "save"
+OUTPUT_STREAM: str = "stream"
+OUTPUT_MODES: tuple[str, ...] = (OUTPUT_DISPLAY, OUTPUT_SAVE, OUTPUT_STREAM)
+# Mix stream names (metadata.mix toggles).
+MIX_VIDEO: str = "video"
+MIX_AUDIO: str = "audio"
+MIX_SUBTITLE: str = "subtitle"
+MIX_STREAMS: tuple[str, ...] = (MIX_VIDEO, MIX_AUDIO, MIX_SUBTITLE)
+# Leading-track kinds (metadata.leading.kind).
+LEADING_NONE: str = "none"
+LEADING_VIDEO: str = "video"
+LEADING_AUDIO: str = "audio"
+LEADING_KINDS: tuple[str, ...] = (LEADING_NONE, LEADING_VIDEO, LEADING_AUDIO)
+
 # --- Environment variable names for optional, user-supplied secrets ---
 ENV_PROXY: str = "YTDL_PROXY"
 ENV_COOKIES_FILE: str = "YTDL_COOKIES_FILE"

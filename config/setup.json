@@ -1,5 +1,5 @@
 {
-  "version": "1.02",
+  "version": "1.03",
   "paths": {
     "output_dir": "./downloads"
   },
@@ -29,5 +29,16 @@
   },
   "ffmpeg": {
     "location": "auto"
+  },
+  "sample": {
+    "play_seconds": 10,
+    "mid_band_low": 0.25,
+    "mid_band_high": 0.75,
+    "loop": true
+  },
+  "render": {
+    "video_codec": "libx264",
+    "audio_codec": "aac",
+    "container": "mp4"
   }
 }
