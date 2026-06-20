@@ -29,3 +29,8 @@ class RateLimitExceededError(YtdlError):
     """Raised when a configured request quota (minute/hour/day/month) is hit,
     or when YouTube returns HTTP 429. Stopping here protects the account from
     being throttled/blocked by YouTube."""
+
+
+class PlaybackDependencyError(YtdlError):
+    """Raised when the video mixer cannot find a required external dependency
+    (VLC Media Player binary for Option 1, or libVLC/python-vlc for Option 2)."""

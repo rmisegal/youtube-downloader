@@ -1,7 +1,13 @@
 {
-  "version": "1.01",
+  "version": "1.02",
   "paths": {
     "output_dir": "./downloads"
+  },
+  "playback": {
+    "default_mode": "option2",
+    "default_selection": "random",
+    "crossfade_duration_seconds": 3,
+    "supported_video_formats": [".mp4", ".mkv", ".mov", ".avi"]
   },
   "network": {
     "js_runtime": "auto"

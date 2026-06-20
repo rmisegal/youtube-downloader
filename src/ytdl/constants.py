@@ -19,6 +19,18 @@ EXT_SUBTITLE: str = "srt"
 SUPPORTED_SUBTITLE_EXTS: tuple[str, ...] = ("srt", "vtt", "ass")
 SUPPORTED_OUTPUT_EXTS: tuple[str, ...] = (EXT_VIDEO, EXT_AUDIO, EXT_SUBTITLE)
 
+# --- Video mixer / VJ playback (PRD-mixer §2/§4) ---
+# Local media formats the mixer will index from a folder (config mirrors this).
+SUPPORTED_VIDEO_FORMATS: tuple[str, ...] = (".mp4", ".mkv", ".mov", ".avi")
+# Playback engine identifiers.
+PLAYBACK_OPTION1: str = "option1"  # FFmpeg xfade/acrossfade -> VLC stdin (true crossfade)
+PLAYBACK_OPTION2: str = "option2"  # dual-libVLC gapless switching + audio crossfade
+PLAYBACK_MODES: tuple[str, ...] = (PLAYBACK_OPTION1, PLAYBACK_OPTION2)
+# Track selection strategies.
+SELECTION_RANDOM: str = "random"
+SELECTION_MANUAL: str = "manual"
+SELECTION_MODES: tuple[str, ...] = (SELECTION_RANDOM, SELECTION_MANUAL)
+
 # --- yt-dlp format selectors (templates filled at runtime) ---
 # Best video+audio merged; cap height when a resolution is requested.
 VIDEO_FORMAT_BEST: str = "bv*+ba/b"
