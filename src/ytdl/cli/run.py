@@ -13,6 +13,7 @@ import logging
 import sys
 
 from ytdl.cli.exits import (
+    EXIT_ANALYSIS,
     EXIT_GENERIC_ERROR,
     EXIT_PLAYBACK_DEP,
     EXIT_PLAYLIST,
@@ -22,6 +23,7 @@ from ytdl.cli.exits import (
 )
 from ytdl.sdk.sdk import YoutubeDownloaderSDK
 from ytdl.shared.errors import (
+    AudioAnalysisError,
     PlaybackDependencyError,
     PlaylistError,
     RateLimitExceededError,
@@ -82,6 +84,32 @@ def run_sample(args) -> int:  # noqa: ANN001 - argparse.Namespace
     except Exception as exc:  # noqa: BLE001 - top-level CLI boundary
         return _fail("Unexpected error", exc, EXIT_GENERIC_ERROR)
     _LOGGER.info("phase=done sample mode=%s tracks=%s", result.get("mode"), result.get("track_count"))
+    return EXIT_SUCCESS
+
+
+def run_analyze(args) -> int:  # noqa: ANN001 - argparse.Namespace
+    """Analyze an audio file's rhythm/structure; map exceptions to exit codes."""
+    _LOGGER.info("phase=analyze audio=%s fps=%s", args.analyze, args.analyze_fps)
+    levels = [s.strip() for s in args.analyze_levels.split(",")] if args.analyze_levels else None
+    sdk = YoutubeDownloaderSDK()
+    try:
+        result = sdk.analyze_audio(
+            args.analyze, levels=levels, target_fps=args.analyze_fps,
+            out_path=args.output_dir, fmt=args.analyze_format,
+        )
+    except AudioAnalysisError as exc:
+        return _fail("Audio analysis failed", exc, EXIT_ANALYSIS)
+    except FileNotFoundError as exc:
+        return _fail("Audio file not found", exc, EXIT_USAGE)
+    except Exception as exc:  # noqa: BLE001 - top-level CLI boundary
+        return _fail("Unexpected error", exc, EXIT_GENERIC_ERROR)
+    md = result["metadata"]
+    beats = len(result.get("cut_points", {}).get("beats", []))
+    gpu = "gpu available" if md.get("gpu_available") else "no gpu"
+    print(f"Analyzed {md['file_name']}: {md['global_bpm']} BPM, {beats} beats, "
+          f"device={md['device']} ({gpu})")
+    if result.get("output"):
+        print(f"Wrote {result['output']}")
     return EXIT_SUCCESS
 
 

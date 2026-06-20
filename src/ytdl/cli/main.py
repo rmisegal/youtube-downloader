@@ -27,7 +27,7 @@ from ytdl.cli.exits import (
     EXIT_USAGE,
 )
 from ytdl.cli.playlist import is_playlist_url, resolve_playlist_choice
-from ytdl.cli.run import _fail, run_mix, run_playlist, run_sample
+from ytdl.cli.run import _fail, run_analyze, run_mix, run_playlist, run_sample
 from ytdl.cli.usage import commands_text
 from ytdl.sdk.sdk import YoutubeDownloaderSDK
 from ytdl.shared import logsetup
@@ -143,6 +143,8 @@ def main(argv: list[str] | None = None) -> int:
         return _print_commands()
     if args.version:
         return _print_version()
+    if args.analyze:
+        return run_analyze(args)
     if args.mix:
         return run_mix(args)
     if args.sample_play:

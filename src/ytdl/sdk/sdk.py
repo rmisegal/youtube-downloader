@@ -20,6 +20,7 @@ from ytdl.sdk.wiring import (
     build_playlist_runner,
     build_sample_runner,
 )
+from ytdl.services.analysis.run import analyze_and_export
 from ytdl.services.audio import AudioDownloader
 from ytdl.services.base import BaseDownloader
 from ytdl.services.metadata import MetadataService
@@ -145,6 +146,13 @@ class YoutubeDownloaderSDK:
         """
         runner = build_playlist_runner(self._config, downloader=self)
         return runner.run(yaml_path)
+
+    def analyze_audio(self, audio_path: str, **kwargs: Any) -> dict[str, Any]:
+        """Analyze an audio track's beats/bars/phrases/sections (PRD-beatsync).
+
+        ``kwargs``: ``levels``, ``target_fps``, ``out_path``, ``fmt`` (json/csv).
+        """
+        return analyze_and_export(self._config, audio_path, **kwargs)
 
     def download_video(self, url: str, **kwargs: Any) -> dict[str, Any]:
         """Convenience: download video only (delegates to :meth:`download`)."""

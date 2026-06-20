@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import argparse
 
+from ytdl.cli.argdefs import add_analysis_args, add_mixer_args, add_playlist_args
+
 
 def build_parser() -> argparse.ArgumentParser:
     """Build the argument parser for ``python -m ytdl`` (PRD §3.1)."""
@@ -66,8 +68,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Download only these playlist items, e.g. '1,3,5' or '1-5' (skips the prompt).",
     )
-    _add_mixer_args(parser)
-    _add_playlist_args(parser)
+    add_mixer_args(parser)
+    add_playlist_args(parser)
+    add_analysis_args(parser)
     parser.add_argument(
         "-v",
         "--verbose",
@@ -88,72 +91,3 @@ def build_parser() -> argparse.ArgumentParser:
     )
     return parser
 
-
-def _add_playlist_args(parser: argparse.ArgumentParser) -> None:
-    """Add the sampler / per-clip duration / YAML playlist flags (PRD-playlist §3.1)."""
-    parser.add_argument(
-        "--sample-play",
-        dest="sample_play",
-        action="store_true",
-        help="Preview --dir: crossfade random mid-band samples of each clip (uses --mode).",
-    )
-    parser.add_argument(
-        "--play-for-sec",
-        dest="play_for_sec",
-        type=float,
-        default=None,
-        help="Seconds to play each clip before the crossfade (sampler or mix).",
-    )
-    parser.add_argument(
-        "--playlist-file",
-        dest="playlist_file",
-        default=None,
-        help="Path to a declarative YAML playlist to display/save/stream.",
-    )
-
-
-def _add_mixer_args(parser: argparse.ArgumentParser) -> None:
-    """Add the VJ video-mixer flags (PRD-mixer §3)."""
-    parser.add_argument(
-        "--mix",
-        action="store_true",
-        help="Switch to live video mixer / VJ playback mode (instead of downloading).",
-    )
-    parser.add_argument(
-        "--dir",
-        default=None,
-        help="Folder of local video assets to mix (required with --mix).",
-    )
-    parser.add_argument(
-        "--mode",
-        choices=("option1", "option2"),
-        default=None,
-        help="Engine: option1 (FFmpeg->VLC, true crossfade) or option2 (dual-libVLC). Default: option2.",
-    )
-    parser.add_argument(
-        "--selection",
-        choices=("random", "manual"),
-        default=None,
-        help="Track selection: random (infinite shuffle) or manual (numbered picker). Default: random.",
-    )
-    parser.add_argument(
-        "--crossfade-time",
-        dest="crossfade_time",
-        type=int,
-        default=None,
-        help="Crossfade overlap window in seconds. Default: 3.",
-    )
-    parser.add_argument(
-        "--source-mix-time",
-        dest="source_mix_time",
-        type=float,
-        default=None,
-        help="Seconds into the source clip where the crossfade begins. Default: clip end.",
-    )
-    parser.add_argument(
-        "--target-start-time",
-        dest="target_start_time",
-        type=float,
-        default=None,
-        help="In-point (seconds) where the target clip starts. Default: 0.",
-    )

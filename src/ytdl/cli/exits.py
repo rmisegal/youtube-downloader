@@ -15,4 +15,5 @@ EXIT_CONFIG_VERSION: int = 5
 EXIT_RATE_LIMIT: int = 6  # configured quota hit or YouTube HTTP 429
 EXIT_PLAYBACK_DEP: int = 7  # VLC / playback dependency missing
 EXIT_PLAYLIST: int = 8  # invalid/malformed playlist YAML (PlaylistError)
+EXIT_ANALYSIS: int = 9  # audio analysis failed (AudioAnalysisError)
 EXIT_USAGE: int = 2  # argparse/missing-url/missing-dir usage error
