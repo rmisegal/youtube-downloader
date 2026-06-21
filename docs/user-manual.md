@@ -508,7 +508,7 @@ members:
     type: video               # video | image (default video).
     start_time: 25            # in-point seconds (video source -ss).
     play_time: 30             # seconds to play (video). For an IMAGE, duration = until - at.
-    playback_speed: 1.0       # speed multiplier (video).
+    playback_speed: 1.0       # video speed: 1.0 normal, 0.5 = SLOW-motion, 2.0 = FAST-motion.
     resolution: max           # "max" or "WxH"/height.
     subtitle: "C:\s\a.srt"    # null/false = off, true = embedded, "<file>" = insert.
     effect: fade              # legacy mix effect name.
@@ -554,14 +554,18 @@ metadata:
   tracks:
     titles:                       # each its OWN timeline, drawn above the visuals
       - { text: "SEGAL MIX", at_beat: 16, for_beats: 8, transition: fade,
-          effect: pulse, direction: left, color: yellow }   # slide left + pulse + fade
-      - { text: "LIVE", at: 30, until: 34, color: cyan }     # seconds timing, static
+          effect: explode, color: yellow }                  # word breaks into letters
+      - { text: "שלום עולם", at_beat: 48, for_beats: 8, effect: rotate, color: cyan }  # Hebrew (RTL)
     subtitles:                     # same machinery, typically bottom-of-frame captions
       - { text: "chapter one", at_beat: 0, for_beats: 32, color: white, y: 0.85 }
 members:
   - { id: 1, type: image, file: a.jpg }
-  - { id: 2, type: video, file: clip.mp4, start_time: 30 }
+  - { id: 2, type: video, file: clip.mp4, start_time: 30, playback_speed: 0.5 }  # slow-motion
 ```
+
+> **Hebrew / RTL & Unicode:** all title/subtitle text is UTF-8 and **right-to-left aware** — Hebrew (and Arabic)
+> is reordered to visual order (python-bidi) and drawn with a Unicode font, so it renders correctly rather than
+> reversed or as boxes. Mixed Hebrew+Latin in one line is handled by the BiDi algorithm.
 
 **Element fields** (titles and subtitles share them):
 

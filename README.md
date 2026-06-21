@@ -523,14 +523,20 @@ metadata:
   tracks:
     titles:
       - { text: "SEGAL MIX", at_beat: 16, for_beats: 8, transition: fade,
-          effect: pulse, direction: left, color: yellow }   # slides left, pulses, fades
-      - { text: "LIVE", at: 30, until: 34, color: cyan }     # seconds timing, static
+          effect: explode, color: yellow }                  # word breaks into letters
+      - { text: "שלום עולם", at_beat: 48, for_beats: 8, effect: rotate, color: cyan }  # Hebrew (RTL)
     subtitles:
       - { text: "chapter one", at_beat: 0, for_beats: 32, color: white, y: 0.85 }
 members:
   - { id: 1, type: image, file: a.jpg }                      # the visual track (unchanged)
-  - { id: 2, type: video, file: clip.mp4, start_time: 30 }
+  - { id: 2, type: video, file: clip.mp4, start_time: 30, playback_speed: 0.5 }  # slow-motion
+  - { id: 3, type: video, file: clip2.mp4, start_time: 12, playback_speed: 2.0 } # fast-motion
 ```
+
+> **Hebrew / RTL & Unicode:** title and subtitle text is UTF-8 and **right-to-left aware** — Hebrew/Arabic is
+> reordered to visual order (python-bidi) and drawn with a Unicode font, so it renders correctly (not reversed
+> or boxed). **Video slow/fast motion:** a video member's `playback_speed` (`0.5` = slow-mo, `2.0` = fast) is
+> applied with `setpts`, keeping the clip the length of its slot.
 
 **Element fields** (titles and subtitles share them):
 
