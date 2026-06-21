@@ -1,0 +1,51 @@
+PROPRIETARY SOFTWARE — ALL RIGHTS RESERVED
+
+youtube-downloader  (Beat-Sync Video Mixer / VJ toolkit)
+Copyright (c) 2026 Dr. Yoram Segal <segal@gal-tech.ai>
+
+----------------------------------------------------------------------
+DECLARATION
+----------------------------------------------------------------------
+This software and its source code were created by
+
+        Dr. Yoram Segal  —  segal@gal-tech.ai
+
+for the study and educational use of his students.
+
+ALL RIGHTS RESERVED to Dr. Yoram Segal.
+
+----------------------------------------------------------------------
+TERMS
+----------------------------------------------------------------------
+1. You may use this software for personal study and educational
+   purposes only.
+
+2. Redistribution, public hosting, modification-for-redistribution, or
+   any COMMERCIAL USE is NOT permitted without the prior written
+   permission of Dr. Yoram Segal.
+
+3. For commercial usage, licensing, or any other permission, please
+   contact:
+
+        Dr. Yoram Segal  —  segal@gal-tech.ai
+
+----------------------------------------------------------------------
+THIRD-PARTY COMPONENTS
+----------------------------------------------------------------------
+This project depends on third-party open-source libraries (among them
+yt-dlp, FFmpeg via imageio-ffmpeg, python-vlc with the VLC media player,
+librosa, NumPy, SciPy, SoundFile, Numba, PyYAML, and the development
+tools pytest / pytest-cov / ruff). Each of those components remains
+under its own respective license — see docs/user-manual.md, section
+"External code, libraries & license agreements". The "ALL RIGHTS
+RESERVED" terms above apply to the original code authored by
+Dr. Yoram Segal, and not to those independently-licensed components.
+
+----------------------------------------------------------------------
+NO WARRANTY
+----------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT SHALL
+THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING
+FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.

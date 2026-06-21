@@ -6,7 +6,22 @@ A Windows PowerShell command-line tool that, given a single YouTube URL, downloa
 [`imageio-ffmpeg`](https://pypi.org/project/imageio-ffmpeg/).
 
 The authoritative specification lives in [`docs/PRD.md`](docs/PRD.md) and
-[`docs/PLAN.md`](docs/PLAN.md).
+[`docs/PLAN.md`](docs/PLAN.md). A complete end-user guide lives in
+[`docs/user-manual.md`](docs/user-manual.md).
+
+---
+
+## ⚖️ Author & license — All Rights Reserved
+
+> **Created by Dr. Yoram Segal — `segal@gal-tech.ai` — for the study and educational use of his students.**
+> **© 2026 Dr. Yoram Segal. All Rights Reserved.**
+>
+> This code is provided for personal study and educational purposes. Redistribution and **commercial use are
+> not permitted without prior written permission**. **For commercial usage, please contact Dr. Yoram Segal at
+> `segal@gal-tech.ai`.**
+>
+> Third-party open-source dependencies (yt-dlp, FFmpeg, VLC, librosa, NumPy, …) remain under their own
+> licenses — see [`LICENSE`](LICENSE) and the user manual's *External code & licenses* section.
 
 ---
 
@@ -584,3 +599,18 @@ The following are **explicitly out of scope for v1.00** and listed here only for
   leaves the intermediate per-stream files (e.g. `name.f137.mp4`, `name.f251.webm`)
   next to the final `name.mp4` / `name.mp3`. The required outputs are correct; the
   intermediates are harmless leftovers. Automatic cleanup is planned for a future release.
+
+---
+
+## License & author — All Rights Reserved
+
+**Created by Dr. Yoram Segal — `segal@gal-tech.ai` — for the study and educational use of his students.**
+**© 2026 Dr. Yoram Segal. All Rights Reserved.**
+
+This software is provided for personal study and educational purposes. Redistribution and **commercial use are
+not permitted without prior written permission. For commercial usage, licensing, or permissions, please contact
+Dr. Yoram Segal at `segal@gal-tech.ai`.** The full declaration is in [`LICENSE`](LICENSE); a complete end-user
+guide (including third-party license notes) is in [`docs/user-manual.md`](docs/user-manual.md).
+
+Third-party open-source dependencies (yt-dlp, FFmpeg, VLC, librosa, NumPy, SciPy, PyYAML, …) remain under their
+own respective licenses — see the user manual's *External code & licenses* section.
