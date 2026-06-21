@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 
 from ytdl.cli.exits import EXIT_GENERIC_ERROR, EXIT_RATE_LIMIT, EXIT_SUCCESS, EXIT_USAGE
 from ytdl.cli.run import _fail, run_playlist
@@ -28,7 +29,12 @@ def run_search(args) -> int:  # noqa: ANN001 - argparse.Namespace
         return _fail("Rate limit / quota reached (protecting your account)", exc, EXIT_RATE_LIMIT)
     except Exception as exc:  # noqa: BLE001 - top-level CLI boundary
         return _fail("YouTube search failed", exc, EXIT_GENERIC_ERROR)
-    print(json.dumps(results, indent=2, ensure_ascii=False))
+    payload = json.dumps(results, indent=2, ensure_ascii=False)
+    if args.output_dir:  # -o <file>: save the candidates instead of only printing them
+        Path(args.output_dir).write_text(payload, encoding="utf-8")
+        print(f"Wrote {len(results)} candidates to {args.output_dir}")
+    else:
+        print(payload)
     return EXIT_SUCCESS
 
 

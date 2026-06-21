@@ -27,6 +27,7 @@ from ytdl.cli.exits import (
     EXIT_USAGE,
 )
 from ytdl.cli.movie_run import run_build_movie, run_fetch_movie, run_search
+from ytdl.cli.pipeline_run import run_to_segments
 from ytdl.cli.playlist import is_playlist_url, resolve_playlist_choice
 from ytdl.cli.run import _fail, run_analyze, run_mix, run_playlist, run_sample
 from ytdl.cli.usage import commands_text
@@ -150,6 +151,8 @@ def main(argv: list[str] | None = None) -> int:
         return run_search(args)
     if args.fetch_movie:
         return run_fetch_movie(args)
+    if args.to_segments:
+        return run_to_segments(args)
     if args.build_movie:
         return run_build_movie(args)
     if args.mix:

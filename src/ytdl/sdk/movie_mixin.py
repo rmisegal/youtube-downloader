@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from ytdl.services.movie.builder import build_movie_playlist, load_segments
+from ytdl.services.movie.scaffold import candidates_to_segments, load_candidates, write_segments
 from ytdl.services.movie.search import search_youtube
 
 
@@ -33,6 +34,10 @@ class MovieMixin:
             load_segments(segments_path), video_dir, leading_audio=leading_audio,
             out_path=out_path, sync_target=sync_target,
         )
+
+    def to_segments(self, candidates_path: str, out_path: str) -> str:
+        """Scaffold an editable segments JSON from a ``--search`` candidates file."""
+        return write_segments(candidates_to_segments(load_candidates(candidates_path)), out_path)
 
     def fetch_movie(self, segments_path: str, video_dir: str) -> dict[str, list[int]]:
         """Download each segment's video to ``seg_<n>.mp4`` with ``[N/total]`` progress."""

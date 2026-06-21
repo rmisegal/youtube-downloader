@@ -40,6 +40,10 @@ def add_movie_args(parser: argparse.ArgumentParser) -> None:
         help="Download every video in a segments JSON to seg_<n>.mp4 in --dir (shows progress).",
     )
     parser.add_argument(
+        "--to-segments", dest="to_segments", default=None,
+        help="Scaffold an editable segments JSON from a --search candidates file (write with -o).",
+    )
+    parser.add_argument(
         "--build-movie", dest="build_movie", default=None,
         help="Build a playlist from a Video Content Matcher segments JSON (videos in --dir).",
     )
