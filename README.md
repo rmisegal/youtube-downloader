@@ -617,6 +617,34 @@ The skills live in `.claude/skills/`, the sub-agent in `.claude/agents/`.
 
 ---
 
+## One-run movie pipeline — idea + song → beat-synced video (PRD-mix-video-pipeline)
+
+A **wizard-driven, resumable pipeline** does the whole job in one flow: set up → understand the music → script
+it scene-by-scene → find + download the best **real** YouTube footage per scene → build a **beat-synced**
+playlist → render ONE mixed video → play it. Framed as Dr. Segal's **Three-Layer Agent Architecture**
+(Software → Skill → Agent): the Python SDK/pipeline, the matcher/script-writer skills, and the
+`youtube-movie-maker` **Orchestrator Agent**.
+
+```powershell
+# 1. Setup wizard → config.json (leading song, scene count, beat-sync style, topic/vibe, LLM choice)
+uv run python -m ytdl --movie-wizard -o config.json
+
+# 2. (optional) Plan only the structure so YOU/the agent can author the per-scene script.json
+uv run python -m ytdl --plan-movie --config config.json
+
+# 3. Run the whole thing (resumes any finished stage): match → download → build → render → play
+uv run python -m ytdl --make-movie --config config.json
+#    overrides: --scenes 16  --vendor claude  --auth cli|api  --leading song.mp3
+```
+
+Each stage writes its artifact to the build folder (`structure.json`, `script.json`, `segments.json`,
+`videos/seg_*.mp4`, `movie.yaml`, `pipeline_report.md`), so a re-run **resumes** after any interruption or
+rate-limit pause. **LLM:** the script step defaults to **Claude via CLI login** (your subscription — no API key,
+no token bill); `--auth api` uses an API key from `.env` instead (otherwise the key is scrubbed from the
+environment so the CLI login is used). Only real footage is edited together — nothing is generated/faked.
+
+---
+
 ## Secrets / optional environment
 
 Public YouTube videos require **no API key and no secrets**. Optional, user-supplied values may be

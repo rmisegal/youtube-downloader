@@ -67,3 +67,10 @@ def test_factory_api_unsupported_vendor() -> None:
     cfg = ConfigManager(data={"version": "1.06"})
     with pytest.raises(LlmError):
         build_provider(vendor="openai", auth="api", config=cfg)
+
+
+def test_factory_reads_real_setup_llm_section() -> None:
+    # the shipped setup.json drives the provider (no hardcoded values, Rule 11/12)
+    prov = build_provider(config=ConfigManager(file_name="setup.json"))
+    assert prov._exe == "claude" and "-p" in prov._args
+    assert "ANTHROPIC_API_KEY" in prov._strip

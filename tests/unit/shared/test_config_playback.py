@@ -17,7 +17,7 @@ def test_setup_version_validates() -> None:
     cfg = _setup()
 
     cfg.validate_config_version()
-    assert cfg.version == "1.05"
+    assert cfg.version == "1.06"
 
 
 def test_sample_block_defaults() -> None:

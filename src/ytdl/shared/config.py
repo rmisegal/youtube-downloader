@@ -20,7 +20,9 @@ class ConfigManager:
     :class:`ConfigVersionError`.
     """
 
-    SUPPORTED_CONFIG_VERSIONS: list[str] = ["1.00", "1.01", "1.02", "1.03", "1.04", "1.05"]
+    SUPPORTED_CONFIG_VERSIONS: list[str] = [
+        "1.00", "1.01", "1.02", "1.03", "1.04", "1.05", "1.06",
+    ]
     VERSION_KEY: str = "version"
 
     def __init__(

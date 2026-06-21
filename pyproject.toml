@@ -1,6 +1,6 @@
 [project]
 name = "youtube-downloader"
-version = "1.05"
+version = "1.06"
 description = "Windows PowerShell CLI to download YouTube video (mp4), audio (mp3), and subtitles (srt) via yt-dlp + imageio-ffmpeg."
 readme = "README.md"
 requires-python = ">=3.10"

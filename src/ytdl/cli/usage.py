@@ -64,9 +64,14 @@ Play / save / stream a declarative YAML playlist:
   uv run python -m ytdl --playlist-file "C:\\lists\\show.yaml"
 
 Movie-agent tools (search, download with progress, then build/produce a film):
-  uv run python -m ytdl --search "city timelapse 4k" --results 5
+  uv run python -m ytdl --search "city timelapse 4k" --results 5 -o candidates.json
+  uv run python -m ytdl --to-segments candidates.json -o segments.json
   uv run python -m ytdl --fetch-movie "segments.json" --dir "C:\\movie\\videos"
   uv run python -m ytdl --build-movie "segments.json" --dir "C:\\movie\\videos" --produce
+
+One-run movie pipeline (idea + song -> beat-synced mixed video; resumable):
+  uv run python -m ytdl --movie-wizard -o config.json
+  uv run python -m ytdl --make-movie --config config.json
 
 Flags:
   url               The YouTube video URL (positional).
@@ -85,8 +90,15 @@ Flags:
   --analyze         Analyze a song's beats/bars/phrases/sections to JSON/CSV.
   --search          Search YouTube; print candidate videos (+durations) as JSON.
   --results         Number of --search results. Default 8.
+  --to-segments     Scaffold an editable segments JSON from a --search candidates file.
   --fetch-movie     Download every video in a segments JSON to seg_<n>.mp4 (with progress).
   --build-movie     Build a playlist from a Video Content Matcher segments JSON.
+  --movie-wizard    Interactive setup wizard -> writes a movie pipeline config.json.
+  --plan-movie      Run only STRUCTURE (song -> scenario grid) for agent scripting.
+  --make-movie      Run the full idea+song -> mixed-video pipeline (needs --config).
+  --config          Movie pipeline config.json (from --movie-wizard).
+  --scenes          Override the number of scenes for --make-movie/--plan-movie.
+  --vendor/--auth   LLM vendor + auth (cli login default, or api key).
   --leading         Optional music score for --build-movie (else clips keep audio).
   --produce         After --build-movie, render the film immediately.
   --version         Print code + config version and exit.

@@ -1751,7 +1751,7 @@ wheels = [
 
 [[package]]
 name = "youtube-downloader"
-version = "1.5"
+version = "1.6"
 source = { editable = "." }
 dependencies = [
     { name = "imageio-ffmpeg" },

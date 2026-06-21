@@ -1,7 +1,30 @@
 {
-  "version": "1.05",
+  "version": "1.06",
   "paths": {
     "output_dir": "./downloads"
+  },
+  "pipeline": {
+    "scene_target": 24,
+    "sync_target": "video_art",
+    "mode": "bar",
+    "output_dir": "./movies"
+  },
+  "llm": {
+    "vendor": "claude",
+    "auth": "cli",
+    "api": { "model": "claude-opus-4-8" },
+    "providers": {
+      "claude": {
+        "executable": "claude",
+        "args": ["-p"],
+        "strip_env_keys": ["ANTHROPIC_API_KEY", "CLAUDECODE", "ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "API_TIMEOUT_MS"]
+      },
+      "gemini": {
+        "executable": "gemini",
+        "args": [],
+        "strip_env_keys": ["GEMINI_API_KEY", "GOOGLE_API_KEY"]
+      }
+    }
   },
   "analysis": {
     "default_fps": 30,
