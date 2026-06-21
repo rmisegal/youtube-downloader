@@ -1,0 +1,35 @@
+youtube-downloader (Beat-Sync Video Mixer / VJ toolkit)
+Copyright (c) 2026 Dr. Yoram Segal <segal@gal-tech.ai>
+ALL RIGHTS RESERVED.
+
+Created by Dr. Yoram Segal (segal@gal-tech.ai) for the study and educational
+use of his students. Personal/educational use is permitted; redistribution and
+COMMERCIAL USE require prior written permission.
+
+For commercial usage, licensing, or any other permission, contact:
+    Dr. Yoram Segal — segal@gal-tech.ai
+
+See the LICENSE file for the full declaration and docs/user-manual.md
+(section "External code, libraries & license agreements") for the third-party
+components and their respective licenses.
+
+----------------------------------------------------------------------
+THIRD-PARTY COMPONENTS (each under its OWN license — not "All Rights Reserved")
+----------------------------------------------------------------------
+  yt-dlp ............... The Unlicense (public domain)
+  FFmpeg (imageio-ffmpeg) LGPL-2.1+ / GPL-2.0+ (FFmpeg authors)
+  imageio-ffmpeg ....... BSD-2-Clause
+  VLC media player ..... GPL-2.0+ / LGPL-2.1+ (VideoLAN)
+  python-vlc ........... LGPL-2.1-or-later
+  librosa .............. ISC
+  NumPy / SciPy ........ BSD-3-Clause
+  SoundFile ............ BSD-3-Clause (libsndfile: LGPL-2.1+)
+  Numba / llvmlite ..... BSD-2-Clause
+  PyYAML ............... MIT
+  pytest / pytest-cov .. MIT
+  ruff ................. MIT
+  uv (Astral) .......... MIT / Apache-2.0
+  madmom (optional) .... BSD-2-Clause (bundled models: academic / non-commercial)
+
+Redistribution of any build must comply with the (L)GPL terms of FFmpeg and VLC
+and with the licenses of all components listed above.

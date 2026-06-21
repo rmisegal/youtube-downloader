@@ -1,9 +1,18 @@
 [project]
 name = "youtube-downloader"
-version = "1.03"
+version = "1.05"
 description = "Windows PowerShell CLI to download YouTube video (mp4), audio (mp3), and subtitles (srt) via yt-dlp + imageio-ffmpeg."
 readme = "README.md"
 requires-python = ">=3.10"
+authors = [{ name = "Dr. Yoram Segal", email = "segal@gal-tech.ai" }]
+maintainers = [{ name = "Dr. Yoram Segal", email = "segal@gal-tech.ai" }]
+license = { text = "Proprietary — All Rights Reserved, Dr. Yoram Segal <segal@gal-tech.ai>. See LICENSE; commercial use requires written permission." }
+classifiers = [
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Intended Audience :: Education",
+]
 dependencies = [
     "yt-dlp",
     "imageio-ffmpeg",
