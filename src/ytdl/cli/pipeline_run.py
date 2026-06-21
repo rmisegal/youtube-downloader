@@ -31,6 +31,19 @@ def _apply_overrides(cfg: MovieConfig, args) -> MovieConfig:  # noqa: ANN001 - a
     return cfg
 
 
+def run_movie_wizard(args) -> int:  # noqa: ANN001 - argparse.Namespace
+    """Run the interactive setup wizard and save a config.json."""
+    out = args.config or args.output_dir or "config.json"
+    _LOGGER.info("phase=movie-wizard out=%s", out)
+    try:
+        path = YoutubeDownloaderSDK().movie_wizard(out)
+    except Exception as exc:  # noqa: BLE001 - top-level CLI boundary
+        return _fail("Wizard failed", exc, EXIT_GENERIC_ERROR)
+    print(f"Saved config -> {path}")
+    print(f'Run it: --make-movie --config "{path}"')
+    return EXIT_SUCCESS
+
+
 def run_make_movie(args) -> int:  # noqa: ANN001 - argparse.Namespace
     """Run the full idea+song → mixed-video pipeline from a config.json."""
     if not args.config:

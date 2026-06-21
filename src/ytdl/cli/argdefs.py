@@ -60,6 +60,10 @@ def add_movie_args(parser: argparse.ArgumentParser) -> None:
         help="After --build-movie, immediately produce the film (run the playlist).",
     )
     parser.add_argument(
+        "--movie-wizard", dest="movie_wizard", action="store_true",
+        help="Interactive setup wizard → writes a movie pipeline config.json (use -o/--config path).",
+    )
+    parser.add_argument(
         "--make-movie", dest="make_movie", action="store_true",
         help="Run the full idea+song → mixed-video pipeline (needs --config from --movie-wizard).",
     )
