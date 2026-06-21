@@ -58,7 +58,7 @@ class BaseDownloader:
         tail = OUTTMPL_TEMPLATE.format(name=name) if name else DEFAULT_NAME_TEMPLATE
         opts: dict[str, Any] = {
             "outtmpl": str(Path(output_dir) / tail),
-            "ffmpeg_location": self._ffmpeg.exe(),
+            "ffmpeg_location": self._ffmpeg.ytdlp_location(),  # name yt-dlp accepts (sections)
             "noprogress": True,  # replace yt-dlp's \r bar with a clean, log-friendly hook
             "progress_hooks": [make_progress_hook()],
         }

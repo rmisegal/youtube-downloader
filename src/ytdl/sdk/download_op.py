@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from ytdl.constants import MODE_AUDIO, MODE_SUBS, MODE_VIDEO
+from ytdl.infra.ffprobe import ffmpeg_dir_with_probe
 from ytdl.infra.ytdlp_client import YtDlpClient
 from ytdl.sdk.compose import compose_opts
 from ytdl.services.audio import AudioDownloader
@@ -83,9 +84,12 @@ def run_download(
         merged["noplaylist"] = True
     if playlist_items:
         merged["playlist_items"] = playlist_items
-    if sections:  # fetch only the needed window (movie pipeline) — not the whole video
+    probe_dir = ffmpeg_dir_with_probe() if sections else None
+    if sections and probe_dir:  # fetch only the window — needs ffmpeg+ffprobe (static-ffmpeg)
         merged["download_ranges"] = _section_ranges(*sections)
         merged["force_keyframes_at_cuts"] = True
+        merged["ffmpeg_location"] = probe_dir
+    # else: sections unavailable (offline) → fall back to a full download
     client.download(url, merged)
 
     modes = [

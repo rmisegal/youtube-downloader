@@ -8,7 +8,7 @@ data) supplies defaults; ``tmp_path`` provides the output dir.
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -67,11 +67,19 @@ def test_audio_only(sdk, mock_client, tmp_path):
 
 
 def test_sections_fetch_only_a_window(sdk, mock_client, tmp_path):
-    sdk.download("u", output_dir=str(tmp_path / "out"), sections=(10.0, 50.0))
+    with patch("ytdl.sdk.download_op.ffmpeg_dir_with_probe", return_value="/ff/bin"):
+        sdk.download("u", output_dir=str(tmp_path / "out"), sections=(10.0, 50.0))
     opts = _opts(mock_client)
     assert opts["force_keyframes_at_cuts"] is True
+    assert opts["ffmpeg_location"] == "/ff/bin"  # ffmpeg+ffprobe dir for partial download
     # download_ranges is a yt-dlp callable → returns the one [start, end] window
     assert opts["download_ranges"](None, None) == [{"start_time": 10.0, "end_time": 50.0}]
+
+
+def test_sections_without_ffprobe_falls_back_to_full(sdk, mock_client, tmp_path):
+    with patch("ytdl.sdk.download_op.ffmpeg_dir_with_probe", return_value=None):
+        sdk.download("u", output_dir=str(tmp_path / "out"), sections=(10.0, 50.0))
+    assert "download_ranges" not in _opts(mock_client)  # graceful fallback to full download
 
 
 def test_no_sections_means_full_download(sdk, mock_client, tmp_path):
