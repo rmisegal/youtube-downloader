@@ -7,7 +7,7 @@
         "requests_per_hour": 2000,
         "requests_per_day": 10000,
         "requests_per_month": 100000,
-        "concurrent_max": 1,
+        "concurrent_max": 6,
         "burst_size": 30,
         "burst_window_seconds": 10,
         "retry_after_seconds": 15,

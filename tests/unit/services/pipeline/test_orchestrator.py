@@ -10,22 +10,20 @@ from ytdl.services.pipeline.fetch_stage import fetch_segments
 from ytdl.services.pipeline.orchestrator import MoviePipeline
 
 
-def test_fetch_dedupes_same_url(tmp_path) -> None:
-    segs = [
-        {"sequence_number": 1, "video_url": "u-A"},
-        {"sequence_number": 2, "video_url": "u-A"},  # same video → copy, not re-download
-        {"sequence_number": 3, "video_url": "u-B"},
-    ]
-    downloaded = []
+def test_fetch_parallel_downloads_missing_and_resumes(tmp_path) -> None:
+    segs = [{"sequence_number": i, "video_url": f"u{i}"} for i in (1, 2, 3)]
+    (tmp_path / "seg_2.mp4").write_text("v", encoding="utf-8")  # already present → skipped
+    lock = __import__("threading").Lock()
+    downloaded: list[str] = []
 
     def download(url, name, seg=None):  # noqa: ANN001 - writes <name>.mp4
-        downloaded.append(url)
+        with lock:
+            downloaded.append(url)
         (tmp_path / f"{name}.mp4").write_text("v", encoding="utf-8")
 
-    done, failed = fetch_segments(download, segs, str(tmp_path))
+    done, failed = fetch_segments(download, segs, str(tmp_path), workers=3)
     assert done == [1, 2, 3] and failed == []
-    assert downloaded == ["u-A", "u-B"]  # u-A downloaded once
-    assert (tmp_path / "seg_2.mp4").exists()  # scene 2 got a copy
+    assert set(downloaded) == {"u1", "u3"}  # seg_2 skipped (resume); 1 & 3 fetched in parallel
 
 
 class _FakeSDK:

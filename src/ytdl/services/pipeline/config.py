@@ -32,6 +32,7 @@ class MovieConfig:
     mode: str = "bar"
     scene_seconds: float = 6.0   # per-scene length when there is no leading audio
     download_resolution: int = 720  # cap fetched footage (render is 720p) — avoids 4K bloat
+    download_workers: int = 6        # parallel download threads (FETCH stage)
     output_dir: str = ""
     llm_vendor: str = "claude"
     llm_auth: str = "cli"        # "cli" (default, CLI-login) or "api" (API key)

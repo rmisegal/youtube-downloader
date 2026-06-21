@@ -91,7 +91,7 @@ class MoviePipeline:
                                            no_playlist=True, resolution=self._cfg.download_resolution,
                                            sections=(start, start + dur + 1.0)),
                 sleep_fn=self._sleep)
-        return fetch_segments(download, segments, str(videos))
+        return fetch_segments(download, segments, str(videos), workers=self._cfg.download_workers)
 
     def _build_playlist(self, build: Path, videos: Path, segments: list[dict[str, Any]]) -> str:
         # Clips were fetched as their in-point window → the file starts at 0, so build

@@ -19,6 +19,7 @@ and are passed in; named defaults are last-resort fallbacks only (Rule 11).
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from collections.abc import Callable
 from typing import Any
@@ -65,6 +66,7 @@ class ApiGatekeeper:
         self._sleep_fn = sleep_fn
         self._log = logger or _LOGGER
         self._usage = usage
+        self._check_lock = threading.Lock()  # serialize the rate/quota check only
 
     def execute(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """Run ``func`` under rate control with retry/backoff and logging.
@@ -76,14 +78,17 @@ class ApiGatekeeper:
         attempts fail.
         """
         name = getattr(func, "__name__", repr(func))
-        # Persistent quota check FIRST (per minute/hour/day/month). Raises
-        # RateLimitExceededError outside the retry loop so a quota stop is never
-        # retried into a YouTube ban.
-        if self._usage is not None:
-            self._usage.reserve()
-        if not self._rate_limiter.allow():
-            self._log.info("Rate limit reached; queuing call %s", name)
-            self._queue.enqueue(self._request(func, args, kwargs))
+        # The quota/rate CHECK mutates shared state, so it is serialized by a lock
+        # (cheap) — but ``func`` itself (the slow network call) runs OUTSIDE the lock,
+        # so parallel downloads run concurrently. Quota raises outside the retry loop
+        # so a quota stop is never retried into a YouTube ban.
+        with self._check_lock:
+            if self._usage is not None:
+                self._usage.reserve()
+            allowed = self._rate_limiter.allow()
+            if not allowed:
+                self._log.info("Rate limit reached; queuing call %s", name)
+                self._queue.enqueue(self._request(func, args, kwargs))
         return self._run_with_retries(func, name, args, kwargs)
 
     def _run_with_retries(
