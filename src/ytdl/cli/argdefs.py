@@ -25,6 +25,30 @@ def add_playlist_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_movie_args(parser: argparse.ArgumentParser) -> None:
+    """Add the movie-agent tools: YouTube search + segments-JSON → movie (PRD-movie-agent)."""
+    parser.add_argument(
+        "--search", dest="search", default=None,
+        help="Search YouTube and print candidate videos (title/url/duration) as JSON, then exit.",
+    )
+    parser.add_argument(
+        "--results", dest="search_results", type=int, default=8,
+        help="Number of --search results to return. Default: 8.",
+    )
+    parser.add_argument(
+        "--build-movie", dest="build_movie", default=None,
+        help="Build a playlist from a Video Content Matcher segments JSON (videos in --dir).",
+    )
+    parser.add_argument(
+        "--leading", dest="leading_audio", default=None,
+        help="Optional leading audio (music score) for --build-movie; else clips keep their audio.",
+    )
+    parser.add_argument(
+        "--produce", dest="produce", action="store_true",
+        help="After --build-movie, immediately produce the film (run the playlist).",
+    )
+
+
 def add_analysis_args(parser: argparse.ArgumentParser) -> None:
     """Add the beat-sync audio-analyzer flags (PRD-beatsync §4.1)."""
     parser.add_argument(

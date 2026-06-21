@@ -582,6 +582,35 @@ Z-order: visuals (bottom) → titles → subtitles (top).
 
 ---
 
+## Movie-maker agent — idea → film (PRD-movie-agent)
+
+An **LLM agent** turns a one-line idea into a finished film by orchestrating skills + a sub-agent and using this
+project as its editor — it **edits real YouTube footage together**, it does **not** generate/fake video.
+
+* **Skill `video-content-matcher`** — given ordered topics (+ min durations), searches YouTube and the web and
+  emits a strict JSON array of matched segments (`sequence_number, requested_topic, video_url,
+  detection_method, start_time, duration_seconds`).
+* **Agent `youtube-movie-maker`** — idea → shot script → matcher skill → `youtube-fetcher` download sub-agent →
+  build playlist → produce the film.
+
+The agent drives the project through two new CLI tools (both exposed via the SDK):
+
+```powershell
+# 1. Find candidate footage (title / url / duration as JSON) — the matcher's search:
+uv run python -m ytdl --search "first moon landing" --results 5
+
+# 2. Turn a matcher segments JSON into a playlist (one ordered video member per scene) and render it:
+uv run python -m ytdl --build-movie "C:\movie\segments.json" --dir "C:\movie\videos" --produce
+#    add  --leading "score.mp3"  for a music score instead of the clips' own audio
+```
+
+The download sub-agent saves each segment's video as `seg_<sequence_number>.mp4` in the videos folder; the
+builder writes `movie.yaml` (each member plays its exact `start_time` for `duration_seconds`), which the mixer
+crossfades into one film — and which you can further enrich with **title/subtitle tracks** or **beat-sync**.
+The skills live in `.claude/skills/`, the sub-agent in `.claude/agents/`.
+
+---
+
 ## Secrets / optional environment
 
 Public YouTube videos require **no API key and no secrets**. Optional, user-supplied values may be

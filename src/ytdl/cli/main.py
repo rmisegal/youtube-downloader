@@ -26,6 +26,7 @@ from ytdl.cli.exits import (
     EXIT_UNSUPPORTED,
     EXIT_USAGE,
 )
+from ytdl.cli.movie_run import run_build_movie, run_search
 from ytdl.cli.playlist import is_playlist_url, resolve_playlist_choice
 from ytdl.cli.run import _fail, run_analyze, run_mix, run_playlist, run_sample
 from ytdl.cli.usage import commands_text
@@ -145,6 +146,10 @@ def main(argv: list[str] | None = None) -> int:
         return _print_version()
     if args.analyze:
         return run_analyze(args)
+    if args.search:
+        return run_search(args)
+    if args.build_movie:
+        return run_build_movie(args)
     if args.mix:
         return run_mix(args)
     if args.sample_play:

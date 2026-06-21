@@ -12,6 +12,7 @@ from typing import Any
 
 from ytdl.infra.ytdlp_client import YtDlpClient
 from ytdl.sdk.download_op import run_download as _run_download
+from ytdl.sdk.movie_mixin import MovieMixin
 from ytdl.sdk.probe import probe_playlist as _probe_playlist
 from ytdl.sdk.wiring import (
     build_client,
@@ -30,8 +31,8 @@ from ytdl.shared.config import ConfigManager
 from ytdl.shared.version import __version__
 
 
-class YoutubeDownloaderSDK:
-    """Single public surface for downloading video/audio/subtitles."""
+class YoutubeDownloaderSDK(MovieMixin):
+    """Single public surface for downloading video/audio/subtitles + movie-agent tools."""
 
     def __init__(
         self,

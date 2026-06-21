@@ -63,6 +63,10 @@ Sampler with a fixed per-clip play time and the FFmpeg engine:
 Play / save / stream a declarative YAML playlist:
   uv run python -m ytdl --playlist-file "C:\\lists\\show.yaml"
 
+Movie-agent tools (search YouTube, then build a film from a segments JSON):
+  uv run python -m ytdl --search "city timelapse 4k" --results 5
+  uv run python -m ytdl --build-movie "segments.json" --dir "C:\\movie\\videos" --produce
+
 Flags:
   url               The YouTube video URL (positional).
   --video           Download best-quality mp4.
@@ -77,6 +81,12 @@ Flags:
   --sample-play     Preview --dir: crossfade random mid-band samples (uses --mode).
   --play-for-sec    Seconds to play each clip before the crossfade (sampler/mix).
   --playlist-file   Path to a YAML playlist to display/save/stream.
+  --analyze         Analyze a song's beats/bars/phrases/sections to JSON/CSV.
+  --search          Search YouTube; print candidate videos (+durations) as JSON.
+  --results         Number of --search results. Default 8.
+  --build-movie     Build a playlist from a Video Content Matcher segments JSON.
+  --leading         Optional music score for --build-movie (else clips keep audio).
+  --produce         After --build-movie, render the film immediately.
   --version         Print code + config version and exit.
   --command         Show this run-command cheat-sheet and exit.
 

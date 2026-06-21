@@ -9,7 +9,12 @@ from __future__ import annotations
 
 import argparse
 
-from ytdl.cli.argdefs import add_analysis_args, add_mixer_args, add_playlist_args
+from ytdl.cli.argdefs import (
+    add_analysis_args,
+    add_mixer_args,
+    add_movie_args,
+    add_playlist_args,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -71,6 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_mixer_args(parser)
     add_playlist_args(parser)
     add_analysis_args(parser)
+    add_movie_args(parser)
     parser.add_argument(
         "-v",
         "--verbose",
