@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from ytdl.infra.playback.moviepy_tracks import _anchor, _font
+from ytdl.infra.playback.moviepy_tracks import _anchor
 from ytdl.infra.playback.sample_stream import _has_advanced_text
+from ytdl.infra.playback.text_shape import font_path
 from ytdl.services.playlist.track_model import TrackElement
 
 
@@ -25,7 +26,7 @@ def test_two_titles_get_different_default_anchors() -> None:
 
 
 def test_font_resolves_to_a_ttf() -> None:
-    assert _font().lower().endswith(".ttf")
+    assert font_path().lower().endswith(".ttf")
 
 
 def test_advanced_effects_route_to_moviepy() -> None:

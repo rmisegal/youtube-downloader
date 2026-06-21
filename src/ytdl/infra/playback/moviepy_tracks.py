@@ -24,16 +24,10 @@ from ytdl.constants import (
     TRANSITION_PULSE,
 )
 from ytdl.infra.playback.text_letters import letter_clips
+from ytdl.infra.playback.text_shape import font_path, shape_text
 from ytdl.services.analysis.beat_time import resolve_timing
 
-_FONTS = (r"C:\Windows\Fonts\arialbd.ttf", r"C:\Windows\Fonts\arial.ttf",
-          "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-          "/System/Library/Fonts/Supplemental/Arial.ttf")
 _COLORS = ("yellow", "white", "cyan", "orange", "#FF66CC", "#66FFAA")
-
-
-def _font() -> str:
-    return next((f for f in _FONTS if os.path.exists(f)), _FONTS[0])
 
 
 def _b(value: float, size: float, extent: float) -> float:
@@ -43,15 +37,15 @@ def _b(value: float, size: float, extent: float) -> float:
 
 def _anchor(el: Any, w: int, h: int) -> tuple[float, float, float, str, int]:
     seed = sum(ord(c) for c in el.text) + len(el.text) + 1
-    ax = el.x * w if el.x is not None else (0.1 + (seed * 37 % 64) / 100.0) * w
-    ay = el.y * h if el.y is not None else (0.14 + (seed * 53 % 62) / 100.0) * h
+    ax = el.x * w if el.x is not None else (0.08 + (seed * 37 % 58) / 100.0) * w
+    ay = el.y * h if el.y is not None else (0.1 + (seed * 53 % 50) / 100.0) * h
     return ax, ay, el.fontsize or (44 + (seed % 6) * 16), el.color or _COLORS[seed % 6], seed
 
 
 def _clip(text: str, font: str, size: float, color: str) -> Any:
     from moviepy import TextClip  # noqa: PLC0415 - lazy heavy import
 
-    return TextClip(font=font, text=text, font_size=int(size), color=color,
+    return TextClip(font=font, text=shape_text(text), font_size=int(size), color=color,
                     stroke_color="black", stroke_width=2)
 
 
@@ -114,7 +108,7 @@ def render_moviepy_overlay(
     from moviepy import CompositeVideoClip, VideoFileClip  # noqa: PLC0415 - lazy heavy import
 
     w, h = canvas
-    font = _font()
+    font = font_path()
     base = VideoFileClip(base_file)
     layers = [base]
     for el in payload.get("elements", []):
@@ -123,6 +117,7 @@ def render_moviepy_overlay(
             continue
         layers += _element_clips(el, at, until - at, w, h, font, payload.get("bpm", 0.0))
     comp = CompositeVideoClip(layers, size=(w, h)).with_audio(base.audio)
-    comp.write_videofile(out_file, fps=fps, codec="libx264", audio_codec="aac", logger=None)
+    # ``logger="bar"`` shows a tqdm PROGRESS BAR on the console (the slow MoviePy pass).
+    comp.write_videofile(out_file, fps=fps, codec="libx264", audio_codec="aac", logger="bar")
     comp.close()
     base.close()

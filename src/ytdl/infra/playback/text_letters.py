@@ -12,6 +12,7 @@ import math
 from typing import Any
 
 from ytdl.constants import TEXT_ASSEMBLE, TEXT_EXPLODE
+from ytdl.infra.playback.text_shape import shape_text
 
 _ADV = 0.62  # per-letter advance as a fraction of font size
 
@@ -34,7 +35,7 @@ def letter_clips(
 ) -> list[Any]:
     """Return a positioned per-letter clip list for the element's effect."""
     eff = (el.effect or "").lower()
-    chars = list(el.text)
+    chars = list(shape_text(el.text))  # RTL reordered to visual order before splitting
     adv = size * _ADV
     x0 = ax - max(1, len(chars)) * adv / 2.0
     out: list[Any] = []

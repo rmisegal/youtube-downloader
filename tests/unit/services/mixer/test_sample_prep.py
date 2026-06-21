@@ -34,6 +34,22 @@ def test_command_uses_source_audio_when_present() -> None:
     assert cmd[:8] == ["/fake/ffmpeg", "-nostdin", "-y", "-ss", "5.0", "-t", "10.0", "-i"]
 
 
+def test_slow_motion_applies_setpts_and_grabs_more_source() -> None:
+    prep = _prep(lambda *_a: (30.0, True))
+    seg = MixSegment("clip.mp4", start=0.0, play_seconds=4.0, speed=0.5)  # slow-motion
+    cmd = prep.build_command(seg, "out.ts", has_audio=True)
+    joined = " ".join(cmd)
+    assert "setpts=PTS/0.5" in joined          # slows the motion
+    assert "-t 2.0 -i" in joined               # grabs play*speed of source...
+    assert cmd[-4:-1] == ["-t", "4.0", "-f"] or "-t 4.0" in joined  # ...output stays the slot
+
+
+def test_normal_speed_has_no_setpts() -> None:
+    prep = _prep(lambda *_a: (30.0, True))
+    cmd = prep.build_command(MixSegment("clip.mp4", play_seconds=6.0), "out.ts", has_audio=True)
+    assert "setpts" not in " ".join(cmd)
+
+
 def test_command_synthesizes_silence_when_no_audio() -> None:
     prep = _prep(lambda *_a: (30.0, False))
     seg = MixSegment("clip.mp4", start=0.0, play_seconds=8.0)

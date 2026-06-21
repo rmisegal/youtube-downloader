@@ -63,20 +63,24 @@ class SamplePrep:
         if segment.kind == MEMBER_IMAGE:
             return self._image_command(segment, out_path)
         play = segment.play_seconds or 0
+        # Slow-motion (<1) / fast-motion (>1): grab ``play*speed`` of source so that,
+        # after ``setpts=PTS/speed``, the clip still fills its ``play``-second slot.
+        speed = segment.speed if (segment.speed and segment.speed > 0) else 1.0
         # ``-nostdin``: never read the inherited console — otherwise ffmpeg blocks
         # forever waiting on stdin and the whole sample run appears to hang.
         cmd = [
             self._ffmpeg.exe(), "-nostdin", "-y",
-            "-ss", str(segment.start), "-t", str(play), "-i", segment.path,
+            "-ss", str(segment.start), "-t", str(play * speed), "-i", segment.path,
         ]
         if has_audio:
             audio_map = "0:a:0"
         else:
             cmd += ["-f", "lavfi", "-t", str(play), "-i", "anullsrc=r=48000:cl=stereo"]
             audio_map = "1:a:0"
+        vfilter = self._vfilter() if speed == 1.0 else f"setpts=PTS/{speed},{self._vfilter()}"
         cmd += [
             "-map", "0:v:0", "-map", audio_map,
-            "-vf", self._vfilter(),
+            "-vf", vfilter, "-t", str(play),
             "-c:v", "libx264", "-preset", self._preset,
             "-c:a", self._audio_codec,
             "-f", "mpegts", str(out_path),

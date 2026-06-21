@@ -9,8 +9,14 @@ CANVAS = (1280, 720)
 
 def test_basic_text_and_enable_gate() -> None:
     s = text_drawtext("HELLO", 1.0, 5.0, canvas=CANVAS)
-    assert "drawtext=text='HELLO'" in s
+    assert s.startswith("drawtext=fontfile=") and "text='HELLO'" in s  # font for Hebrew glyphs
     assert "enable='between(t,1,5)'" in s
+
+
+def test_text_stays_inside_the_frame() -> None:
+    # y is clamped so the text is never cut off the bottom/edges.
+    s = text_drawtext("LOW", 0.0, 4.0, canvas=CANVAS, y=0.98)
+    assert "min(" in s and "h-text_h" in s
 
 
 def test_move_left_uses_progress_expression() -> None:

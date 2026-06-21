@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from ytdl.constants import TRANSITION_FADE, TRANSITION_PULSE
 from ytdl.infra.playback.renderer_graph import _fmt
+from ytdl.infra.playback.text_shape import drawtext_fontfile, shape_text
 
 _COLORS = ("white", "yellow", "cyan", "orange", "#FF66CC", "#66FFAA", "#FF5555")
 _FADE = 0.4  # seconds of alpha fade in/out
@@ -44,20 +45,23 @@ def text_drawtext(
 ) -> str:
     """Return one ``drawtext`` filter for a text element (gated to [at,until])."""
     seed = sum(ord(c) for c in text) + len(text) + 1
-    # Spread titles ALL OVER the screen (not just centred) when no x/y is given —
-    # a text-derived pseudo-random anchor in the 8..68% / 12..80% range.
-    sx = 0.08 + (seed * 37 % 60) / 100.0
-    sy = 0.12 + (seed * 53 % 68) / 100.0
-    x0 = f"w*{_fmt(x)}" if x is not None else f"w*{_fmt(round(sx, 3))}-text_w/2"
+    # Spread titles ALL OVER the screen (not just centred) when no x/y is given.
+    sx = 0.08 + (seed * 37 % 58) / 100.0
+    sy = 0.10 + (seed * 53 % 52) / 100.0
+    x0 = f"w*{_fmt(x)}-text_w/2" if x is not None else f"w*{_fmt(round(sx, 3))}-text_w/2"
     y0 = f"h*{_fmt(y)}" if y is not None else f"h*{_fmt(round(sy, 3))}"
     if effect == TRANSITION_PULSE:  # heart-beat bob at the song tempo (shared BPM math)
         f = max(0.1, (bpm or 120.0) / 60.0)
         y0 = f"({y0})-14*abs(sin(PI*{_fmt(f)}*t))"
+    # Keep the text fully inside the frame so it is never CUT at the edges/bottom.
+    x0 = f"max(8,min({x0},w-text_w-8))"
+    y0 = f"max(8,min({y0},h-text_h-8))"
     xx, yy = _position(at, until, direction, x0, y0)
     col = color or _COLORS[seed % len(_COLORS)]
     size = fontsize or (48 + (seed % 6) * 16)
     parts = [
-        f"drawtext=text='{_escape(text)}'", f"x='{xx}'", f"y='{yy}'",
+        f"drawtext={drawtext_fontfile()}:text='{_escape(shape_text(text))}'",
+        f"x='{xx}'", f"y='{yy}'",
         f"fontsize={size}", f"fontcolor={col}", "borderw=4", "bordercolor=black@0.85",
         f"enable='between(t,{_fmt(at)},{_fmt(until)})'",
     ]
