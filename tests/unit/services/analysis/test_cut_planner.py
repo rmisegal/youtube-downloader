@@ -36,7 +36,19 @@ def test_unique_mode_is_beat_by_beat_only_at_high_impact() -> None:
 
 def test_transition_is_pulled_from_profile_pool() -> None:
     cuts = plan_cuts(CP, PROF, rng=random.Random(1))
-    assert cuts and all(c["transition"] in PROF.transitions for c in cuts)
+    # Non-boundary cuts come from the profile pool; the only exception is the
+    # dramatic fade-to-black at a section change.
+    assert all(c["transition"] in PROF.transitions or c["transition"] == "fadeblack" for c in cuts)
+
+
+def test_black_only_at_section_boundaries() -> None:
+    cuts = plan_cuts(CP, PROF, mood="groovy", rng=random.Random(0))
+    blacks = [c for c in cuts if c["transition"] == "fadeblack"]
+    # CP has two sections -> exactly one boundary (start of the 2nd section); the
+    # very first cut is never black.
+    assert len(blacks) == 1
+    assert blacks[0]["section"] == "Build-up"
+    assert cuts[0]["transition"] != "fadeblack"
 
 
 def test_fixed_mode_overrides_to_constant_grid() -> None:

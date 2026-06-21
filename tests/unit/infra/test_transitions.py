@@ -54,16 +54,22 @@ def test_resolve_unknown_falls_back_to_fade() -> None:
         ("zoomout", "zoompan="),
         ("panleft", "zoompan="),
         ("panright", "zoompan="),
-        ("fade", "fade=t=in"),
+        ("fadeblack", "fade=t=in"),
     ],
 )
 def test_image_vfilter_contains_expected_filter(name, needle) -> None:
     vf = image_vfilter(name, duration=6.0, canvas=CANVAS, fps=30)
     assert needle in vf
-    # always normalizes to the canvas + adds edge fades
     assert "scale=1280:720" in vf and "crop=1280:720" in vf
-    assert "fade=t=in" in vf and "fade=t=out" in vf
     assert vf.endswith("format=yuv420p,settb=AVTB")
+
+
+def test_only_fadeblack_fades_through_black() -> None:
+    # Clean transitions must NOT fade to black (that caused black gaps between slides).
+    for name in ("zoomin", "zoomout", "panleft", "pulse", "fade"):
+        assert "fade=t=" not in image_vfilter(name, 6.0, CANVAS, 30)
+    # The deliberate dramatic transition DOES fade through black.
+    assert "fade=t=out" in image_vfilter("fadeblack", 6.0, CANVAS, 30)
 
 
 def test_pan_directions_differ() -> None:

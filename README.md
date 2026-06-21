@@ -492,6 +492,10 @@ mood** (BPM) — creative, surprising mixes **with no runtime LLM**. Force a fix
 (103.4 BPM): `video_art` holds a half-bar across the body with beat-by-beat only at the drop (≈141 held slots vs
 ~300 before), while `lecture`/`podcast` hold far longer (65 / 34 slots).
 
+**No black between slides:** each clip fills the frame for its whole slot, so slides flow without a black gap;
+the only fade-**through-black** (`fadeblack`) is inserted **at section changes** as deliberate, dramatic
+punctuation — a few times per song, not between every slide.
+
 > **Scale:** contiguous music-sync slots render via a **concat** path — the prepped clips are stream-**copied**
 > (no re-encode), so a full song's hundreds of cut-points render in a couple of seconds regardless of count
 > (only an *overlapping* manual timeline uses the heavier N-input overlay). The remaining cost is the one-time

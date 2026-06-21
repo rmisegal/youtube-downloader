@@ -2,9 +2,10 @@
 
 Turns a still image (looped to a clip of ``duration`` seconds) into an animated
 clip on the common canvas: a Ken-Burns ``zoompan`` (zoom in/out, pan with a
-direction) or a plain ``fade``. Every image also gets a short fade-in/out so
-timeline overlaps blend. ``resolve`` expands ``"random"`` (the default) to a
-concrete transition via an injectable RNG so tests are deterministic.
+direction), a beat-reactive effect, or a static hold. Clips fill the frame for
+their whole slot — only the deliberate ``fadeblack`` transition fades through
+black — so contiguous slides flow without a black gap. ``resolve`` expands
+``"random"`` (default) via an injectable RNG so tests are deterministic.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from ytdl.constants import (
     BEAT_TRANSITIONS,
     IMAGE_TRANSITIONS,
     TRANSITION_FADE,
+    TRANSITION_FADEBLACK,
     TRANSITION_PANDOWN,
     TRANSITION_PANLEFT,
     TRANSITION_PANRIGHT,
@@ -51,12 +53,16 @@ def image_vfilter(
     """Build the ``-vf`` chain for an animated image clip of ``duration`` seconds.
 
     ``bpm`` (when > 0) drives the beat-reactive effects so they throb in time with
-    the soundtrack; static transitions ignore it.
+    the soundtrack. Only the deliberate ``fadeblack`` transition fades through BLACK
+    (for dramatic section changes); every other transition fills the frame for its
+    whole slot, so contiguous slides flow WITHOUT a black gap between them.
     """
     w, h = canvas
     base = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},setsar=1"
-    anim = _animation(transition, duration, w, h, fps, bpm)
-    fade = _edge_fade(duration)
+    if transition == TRANSITION_FADEBLACK:
+        anim, fade = "", _edge_fade(duration)
+    else:
+        anim, fade = _animation(transition, duration, w, h, fps, bpm), ""
     parts = [base, anim, fade, f"fps={fps}", "format=yuv420p", "settb=AVTB"]
     return ",".join(p for p in parts if p)
 

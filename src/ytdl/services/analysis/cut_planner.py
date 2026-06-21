@@ -14,6 +14,7 @@ import random as _random
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from ytdl.constants import TRANSITION_FADEBLACK
 from ytdl.services.analysis.profiles import (
     HOLD_HALF_BAR,
     HOLD_UNIQUE,
@@ -62,7 +63,7 @@ def plan_cuts(
         {"start_sec": 0.0, "end_sec": beats[-1] + 1.0, "label": ""}
     ]
     cuts: list[Cut] = []
-    for sec in sections:
+    for si, sec in enumerate(sections):
         sec_beats = _in_section(beats, sec["start_sec"], sec["end_sec"])
         if not sec_beats:
             continue
@@ -73,10 +74,13 @@ def plan_cuts(
         else:
             hold, unique = hold_for(profile, sec.get("label", ""), mood)
             picks = _picks(sec_beats, hold, unique)
-        for t, hold_beats, unique in picks:
+        for pi, (t, hold_beats, unique) in enumerate(picks):
+            # A dramatic fade-through-BLACK marks a section change (the only black);
+            # every other cut is a clean, no-black transition from the profile pool.
+            boundary = si > 0 and pi == 0
             cuts.append({
                 "timestamp_sec": round(float(t), 3),
-                "transition": rng.choice(profile.transitions),
+                "transition": TRANSITION_FADEBLACK if boundary else rng.choice(profile.transitions),
                 "section": sec.get("label", ""), "hold_beats": hold_beats, "unique": unique,
             })
     cuts.sort(key=lambda c: c["timestamp_sec"])

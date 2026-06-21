@@ -68,6 +68,10 @@ TRANSITION_PANLEFT: str = "panleft"
 TRANSITION_PANRIGHT: str = "panright"
 TRANSITION_PANUP: str = "panup"
 TRANSITION_PANDOWN: str = "pandown"
+# Deliberate fade-THROUGH-BLACK — reserved for dramatic moments (section changes),
+# NOT a per-clip edge fade. Other transitions are clean (no black) so contiguous
+# slides flow without a black gap between them.
+TRANSITION_FADEBLACK: str = "fadeblack"
 # Beat-reactive effects (PRD-beatsync): pulse/shake/bounce/flash at the music BPM.
 TRANSITION_PULSE: str = "pulse"  # heartbeat zoom throb on every beat
 TRANSITION_SHAKE: str = "shake"  # fast positional jitter (build-ups)
@@ -89,8 +93,8 @@ IMAGE_TRANSITIONS: tuple[str, ...] = (
     TRANSITION_PANUP,
     TRANSITION_PANDOWN,
 )
-# Every recognised transition (static + beat-reactive).
-ALL_TRANSITIONS: tuple[str, ...] = IMAGE_TRANSITIONS + BEAT_TRANSITIONS
+# Every recognised transition (static + beat-reactive + the deliberate fade-to-black).
+ALL_TRANSITIONS: tuple[str, ...] = IMAGE_TRANSITIONS + BEAT_TRANSITIONS + (TRANSITION_FADEBLACK,)
 # Playlist output-mode names (metadata.output toggles).
 OUTPUT_DISPLAY: str = "display"
 OUTPUT_SAVE: str = "save"

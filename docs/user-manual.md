@@ -452,6 +452,12 @@ families:
 * The chosen BPM is attached to each placed clip so beat-reactive effects throb **in time with the song**, and
   the object is **held for its profile's beat-count** before the next pick.
 
+**No black between slides.** Each clip **fills the frame for its whole slot**, so contiguous slides flow into one
+another **without a black gap** — the motion (zoom/pan/pulse) carries the eye across the cut. The only
+fade-**through-black** is a dedicated `fadeblack` transition the planner inserts **only at section changes**
+(Intro→Verse→Chorus→…) — a deliberate, dramatic punctuation that therefore appears just a handful of times per
+song, at musically meaningful "surprise" moments, not between every slide.
+
 **Placement / overlap.** Members carry an absolute timeline position (`at` … `until`). A later member overlays
 an earlier one (so an image can sit on top of a running video). When slots are **contiguous** (the sync case)
 the renderer **concatenates** the clips (video stream-copied — fast at any count); only **overlapping** manual
