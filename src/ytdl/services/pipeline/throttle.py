@@ -1,38 +1,36 @@
-"""Wait-and-retry around the rate-limit gatekeeper for the long pipeline loops.
+"""Pace the long pipeline loops under the rate-limit gatekeeper (glb Rule 5).
 
-The gatekeeper RAISES ``RateLimitExceededError`` to protect the account when the
-per-minute cap is hit. A 70+ search/download pipeline expects this repeatedly, so the
-MATCH/FETCH loops wrap each call: on a rate-limit stop they sleep the suggested window
-and retry (the stage caches progress, so nothing is lost). ``sleep_fn`` is injectable
-so tests never really sleep.
+The gatekeeper RAISES ``RateLimitExceededError`` when the per-minute cap is hit. A 70+
+search/download pipeline expects this constantly, so MATCH/FETCH wrap each call and,
+on a stop, sleep a SHORT interval and retry. A short wait (not the full ~minute the
+message suggests) matters: the sliding window frees a slot every few seconds, so a
+brief retry paces the loop at the allowed rate instead of stalling ~35s each time. The
+stage caches progress, so nothing is lost; ``sleep_fn`` is injectable for tests.
 """
 
 from __future__ import annotations
 
-import re
 import time
 from collections.abc import Callable
 from typing import Any
 
 from ytdl.shared.errors import RateLimitExceededError
 
-_RETRY_RE = re.compile(r"retry in ~?(\d+)")
-
-
-def _wait_seconds(exc: Exception, default: float) -> float:
-    """Seconds to wait — parsed from the gatekeeper message, else ``default``."""
-    match = _RETRY_RE.search(str(exc))
-    return float(match.group(1)) + 2.0 if match else default
+# Just over the steady-state slot interval (10/min ≈ one slot every 6s) so a blocked
+# call retries soon after a slot frees rather than waiting the whole window.
+_WAIT_SECONDS = 7.0
+# Enough retries to outlast a fully-saturated window (~a minute) at the start of a stage.
+_MAX_WAITS = 240
 
 
 def retry_on_rate_limit(
     call: Callable[[], Any], *, sleep_fn: Callable[[float], None] = time.sleep,
-    max_waits: int = 40, default_wait: float = 35.0,
+    wait_seconds: float = _WAIT_SECONDS, max_waits: int = _MAX_WAITS,
 ) -> Any:
-    """Run ``call``; on a rate-limit stop, sleep + retry (up to ``max_waits`` times)."""
+    """Run ``call``; on a rate-limit stop, sleep ``wait_seconds`` and retry."""
     for _ in range(max_waits):
         try:
             return call()
-        except RateLimitExceededError as exc:
-            sleep_fn(_wait_seconds(exc, default_wait))
+        except RateLimitExceededError:
+            sleep_fn(wait_seconds)
     return call()  # final attempt — let any error propagate
