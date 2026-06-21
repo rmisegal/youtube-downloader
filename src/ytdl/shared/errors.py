@@ -46,3 +46,9 @@ class AudioAnalysisError(YtdlError):
     """Raised when the beat/structure analyzer cannot process an audio file
     (decode failure, unreadable/empty audio, or no beats detected). Maps to
     CLI exit code 9 (PRD-beatsync)."""
+
+
+class LlmError(YtdlError):
+    """Raised when an LLM provider (CLI-login or API) fails: the vendor CLI is
+    missing/unauthenticated, an API key is absent in api mode, or the call errors.
+    Used by the movie-pipeline script stage (PRD-mix-video-pipeline)."""
