@@ -71,6 +71,18 @@ def test_fetch_movie_downloads_each_segment(tmp_path) -> None:
     assert calls == [("u1", "seg_1"), ("u2", "seg_2")]  # ordered by sequence_number
 
 
+def test_build_movie_beat_sync_needs_leading(tmp_path) -> None:
+    seg = [{"sequence_number": 1, "start_time": 0, "duration_seconds": 6}]
+    with_lead = build_movie_playlist(seg, str(tmp_path), leading_audio="song.mp3",
+                                     sync_target="dj_party", out_path=str(tmp_path / "a.yaml"))
+    assert "sync: { enabled: true, target: dj_party, mode: bar }" in \
+        __import__("pathlib").Path(with_lead).read_text(encoding="utf-8")
+    # sync without a leading audio is ignored (beat-sync needs a soundtrack)
+    no_lead = build_movie_playlist(seg, str(tmp_path), sync_target="dj_party",
+                                   out_path=str(tmp_path / "b.yaml"))
+    assert "sync:" not in __import__("pathlib").Path(no_lead).read_text(encoding="utf-8")
+
+
 def test_load_segments_validates(tmp_path) -> None:
     good = tmp_path / "s.json"
     good.write_text(json.dumps([{"sequence_number": 1}]), encoding="utf-8")

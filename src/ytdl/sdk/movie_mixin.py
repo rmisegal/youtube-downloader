@@ -26,11 +26,12 @@ class MovieMixin:
     def build_movie(
         self, segments_path: str, video_dir: str, *,
         leading_audio: str | None = None, out_path: str | None = None,
+        sync_target: str | None = None,
     ) -> str:
         """Build a playlist YAML from a matcher segments JSON; return its path."""
         return build_movie_playlist(
-            load_segments(segments_path), video_dir,
-            leading_audio=leading_audio, out_path=out_path,
+            load_segments(segments_path), video_dir, leading_audio=leading_audio,
+            out_path=out_path, sync_target=sync_target,
         )
 
     def fetch_movie(self, segments_path: str, video_dir: str) -> dict[str, list[int]]:

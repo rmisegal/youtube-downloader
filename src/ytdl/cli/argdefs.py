@@ -48,6 +48,10 @@ def add_movie_args(parser: argparse.ArgumentParser) -> None:
         help="Optional leading audio (music score) for --build-movie; else clips keep their audio.",
     )
     parser.add_argument(
+        "--sync", dest="sync_target", nargs="?", const="video_art", default=None,
+        help="Beat-sync the movie cuts to --leading (optional content target, default video_art).",
+    )
+    parser.add_argument(
         "--produce", dest="produce", action="store_true",
         help="After --build-movie, immediately produce the film (run the playlist).",
     )

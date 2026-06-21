@@ -29,8 +29,13 @@ def to_seconds(value: Any) -> float:
 def build_movie_playlist(
     segments: list[dict[str, Any]], video_dir: str, *,
     leading_audio: str | None = None, out_path: str | None = None,
+    sync_target: str | None = None,
 ) -> str:
-    """Write a playlist YAML for the matched segments; return its path."""
+    """Write a playlist YAML for the matched segments; return its path.
+
+    With ``sync_target`` AND ``leading_audio`` the scene cuts are **beat-synced** to
+    the song (clips change on the bar); otherwise scenes play their ``play_time``.
+    """
     ordered = sorted(segments, key=lambda s: s.get("sequence_number", 0))
     audio = "false" if leading_audio else "true"
     lines = [
@@ -40,6 +45,8 @@ def build_movie_playlist(
     ]
     if leading_audio:
         lines.append(f"  leading: {{ kind: audio, file: '{leading_audio}' }}")
+        if sync_target:
+            lines.append(f"  sync: {{ enabled: true, target: {sync_target}, mode: bar }}")
     lines += ["  loop: false", "members:"]
     for i, seg in enumerate(ordered, start=1):
         n = seg.get("sequence_number", i)

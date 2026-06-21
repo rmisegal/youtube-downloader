@@ -49,8 +49,8 @@ def run_build_movie(args) -> int:  # noqa: ANN001 - argparse.Namespace
     _LOGGER.info("phase=build-movie json=%s dir=%s", args.build_movie, args.dir)
     try:
         out = YoutubeDownloaderSDK().build_movie(
-            args.build_movie, args.dir or ".",
-            leading_audio=args.leading_audio, out_path=args.output_dir,
+            args.build_movie, args.dir or ".", leading_audio=args.leading_audio,
+            out_path=args.output_dir, sync_target=args.sync_target,
         )
     except (OSError, ValueError) as exc:
         return _fail("Could not build the movie playlist", exc, EXIT_USAGE)
