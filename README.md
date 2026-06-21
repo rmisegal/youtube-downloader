@@ -5,6 +5,15 @@ A Windows PowerShell command-line tool that, given a single YouTube URL, downloa
 — in any combination — using [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) with FFmpeg supplied by
 [`imageio-ffmpeg`](https://pypi.org/project/imageio-ffmpeg/).
 
+It has since grown into a **video / audio / image mixer** with music **beat-sync**. The whole pipeline runs as
+**classic deterministic software — no LLM, no AI calls, and therefore no token costs** (free, fast, offline,
+repeatable). You *can optionally* put an LLM in front of it (as an agent skill) to drive it in natural language
+— that's opt-in and costs tokens (or run a local LLM like Ollama for free on a strong PC).
+
+> **This tool *edits and mixes* media — it does NOT *generate* fake images or video.** It sets the order,
+> transitions, and music-sync of clips/photos/audio **you already have**, combining them into one movie. (Any
+> AI-generated media is created elsewhere and fed in as input.)
+
 The authoritative specification lives in [`docs/PRD.md`](docs/PRD.md) and
 [`docs/PLAN.md`](docs/PLAN.md). A complete end-user guide lives in
 [`docs/user-manual.md`](docs/user-manual.md).

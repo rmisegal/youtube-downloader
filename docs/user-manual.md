@@ -46,6 +46,23 @@
 
 The engine is `yt-dlp` + FFmpeg (`imageio-ffmpeg`) + VLC (`python-vlc`) + `librosa` for music analysis.
 
+### Key benefit — it runs **without any LLM**, so there are **no token costs**
+The entire pipeline (download, mix, analyze, beat-sync, render) is **classic deterministic software** — it does
+**not** call any AI model and **does not cost a single token**. You drive it with plain terminal commands and a
+small YAML file. That makes it **free to run**, **fast**, **offline**, and **repeatable**.
+
+If you *prefer* a more intuitive, conversational way to drive it, you **can optionally** put a Large Language
+Model (LLM) *in front of it* — wire this tool as an agent **skill/tool** so you describe the video you want in
+**free natural language** and the LLM writes the playlist / runs the commands for you (see the tips in §8). That
+convenience is **opt-in and costs money** (LLM provider tokens) — or it can be **free** if you run a **local
+LLM** (e.g. via Ollama) on a strong PC. **The tool itself never requires an LLM.**
+
+> **What this tool is — and is NOT.** This is strictly a **video / audio / image *editor* and *mixer***: it
+> sets the **order** of your media, the **transitions** between them, and the **synchronisation** to the music.
+> **It does NOT *generate* fake images or fake video** — it does not create or synthesise any visual content. It
+> only **combines media you already have** (your clips, photos, recordings, downloads) into **one movie**. Any
+> AI-generated media is something *you* create with other tools beforehand and simply feed in as input files.
+
 ---
 
 ## 2. Command examples
@@ -124,8 +141,15 @@ manual NLE. Design objectives:
 
 ## 5. Long, end-to-end use cases
 
+> **How to use these examples.** Each block below is a **playlist file**. Save it as a plain-text file with a
+> **`.yaml`** (or `.yml`) extension — for example with Notepad, VS Code, or `notepad C:\lists\show.yaml` — using
+> the file name given under each heading, then run it with `--playlist-file <path>`. The folder for the file is
+> up to you; in these examples we use `C:\lists\`. Adjust the `source_folder`, `leading.file`, and member file
+> names to your own paths.
+
 ### 5.1 Full mix (no leading track)
 A continuous crossfaded montage where each member contributes both picture and sound.
+**Save as `C:\lists\show.yaml`:**
 ```yaml
 version: "1.05"
 metadata:
@@ -139,10 +163,15 @@ members:
   - { id: 2, file: b.mp4, start_time: 0,  play_time: 25 }
   - { id: 3, file: c.mp4, play_time: 18 }
 ```
-`uv run python -m ytdl --playlist-file show.yaml` → one VLC window, total length ≈ Σ play_time − crossfades.
+**Run it:**
+```powershell
+uv run python -m ytdl --playlist-file "C:\lists\show.yaml"
+```
+→ one VLC window, total length ≈ Σ play_time − crossfades (and, because `save: true`, one mp4 in `target_folder`).
 
 ### 5.2 Audio leading track **with beat-sync** (the music-video case)
 The song is the master; photos/clips are auto-placed on its beats and the transition is fitted to the music.
+**Save as `C:\lists\music-video.yaml`:**
 ```yaml
 version: "1.05"
 metadata:
@@ -156,12 +185,17 @@ members:
   - { id: 2, type: image, file: 2.jpg }
   - { id: 3, type: image, file: 3.jpg }
 ```
+**Run it:**
+```powershell
+uv run python -m ytdl --playlist-file "C:\lists\music-video.yaml"
+```
 The song is analyzed (beats/bars/phrases/sections); images cycle across the cut-points; the **chorus gets a
 heartbeat `pulse`, the build-up gets `shake`, the intro a slow `zoomout`**. If the visuals are shorter than the
 song it **fades out**; if longer, the song **crossfade-loops**.
 
 ### 5.3 Video leading track
 A master video drives the picture **and** length; members supply the audio mix (its own audio is dropped).
+**Save as `C:\lists\video-leading.yaml`:**
 ```yaml
 version: "1.05"
 metadata:
@@ -172,10 +206,15 @@ members:
   - { id: 1, file: song1.mp3, play_time: 60 }
   - { id: 2, file: song2.mp3, play_time: 60 }
 ```
+**Run it:**
+```powershell
+uv run python -m ytdl --playlist-file "C:\lists\video-leading.yaml"
+```
 
 ### 5.4 Subtitle leading layout
 Members carry per-member subtitle requests; enable the subtitle mix stream so a lyrics/caption track rides over
 the visuals.
+**Save as `C:\lists\lyrics.yaml`:**
 ```yaml
 version: "1.05"
 metadata:
@@ -183,6 +222,10 @@ metadata:
   mix:    { video: true, audio: true, subtitle: true }   # subtitle stream ON
 members:
   - { id: 1, file: scene.mp4, subtitle: "C:\subs\lyrics.srt" }
+```
+**Run it:**
+```powershell
+uv run python -m ytdl --playlist-file "C:\lists\lyrics.yaml"
 ```
 (If `mix.subtitle` is **off**, per-member subtitle requests are honestly dropped.)
 
@@ -323,6 +366,14 @@ path.
   beat and pulses with the BPM** — no manual editing.
 * **Let an LLM write the playlist.** Ask an LLM (e.g. Gemini/Claude) to generate the **YAML playlist** for you:
   give it your file list + the song and the schema from §11, and paste the result as your `--playlist-file`.
+* **Use it as an agent skill / tool — drive everything in free natural language.** Because every capability is
+  exposed through one clean entry point (the `YoutubeDownloaderSDK` and the CLI), you can register this tool as
+  a **"skill"/tool for an AI agent** (Claude/Gemini/an MCP tool, etc.). The agent then turns a plain-language
+  request like *"make me a 30-second beat-synced clip from these 8 photos and this song"* into the right
+  playlist + commands and runs them — no terminal knowledge needed. Two cost models: **(a)** a **cloud LLM**
+  (you pay your provider's **tokens**), or **(b)** a **local LLM** (e.g. **Ollama** with tool-calling) which is
+  **free of token charges** but needs a **strong PC** (a capable GPU/lots of RAM) to run well. Remember: this is
+  *optional sugar on top* — the tool itself still works fully **without any LLM and without paying anything**.
 * **Pick the right tempo.** Songs around 90–120 BPM give comfortable photo pacing; faster songs produce more
   cuts. Use `--analyze` first to see the BPM and section map before committing.
 * **Keep prep fast.** Dense `mode: auto` over a long song prepares one short clip per cut — use `mode: bar` for
