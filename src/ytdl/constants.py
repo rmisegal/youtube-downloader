@@ -73,6 +73,26 @@ TRANSITION_PANDOWN: str = "pandown"
 # NOT a per-clip edge fade. Other transitions are clean (no black) so contiguous
 # slides flow without a black gap between them.
 TRANSITION_FADEBLACK: str = "fadeblack"
+
+# --- Text-track animation effects (overlay tracks) ---
+# SIMPLE effects render fast via ffmpeg drawtext; ADVANCED effects need MoviePy
+# (true scaling/rotation or per-letter motion). ``pulse`` reuses TRANSITION_PULSE.
+TEXT_STATIC: str = "static"
+TEXT_MOVE: str = "move"
+TEXT_ZOOMIN: str = "zoomin"
+TEXT_ZOOMOUT: str = "zoomout"
+TEXT_ROTATE: str = "rotate"
+TEXT_CIRCLE: str = "circle"
+TEXT_SPIRALIN: str = "spiralin"
+TEXT_SPIRALOUT: str = "spiralout"
+TEXT_EXPLODE: str = "explode"      # letters break apart and fly outward
+TEXT_ASSEMBLE: str = "assemble"    # letters fly in from all sides to form the word
+TEXT_RAIN: str = "rain"            # letters fall from above like raindrops
+PER_LETTER_TEXT_EFFECTS: tuple[str, ...] = (TEXT_EXPLODE, TEXT_ASSEMBLE, TEXT_RAIN)
+ADVANCED_TEXT_EFFECTS: tuple[str, ...] = (
+    TEXT_ZOOMIN, TEXT_ZOOMOUT, TEXT_ROTATE, TEXT_CIRCLE, TEXT_SPIRALIN, TEXT_SPIRALOUT,
+    TEXT_EXPLODE, TEXT_ASSEMBLE, TEXT_RAIN,
+)
 # Beat-reactive effects (PRD-beatsync): pulse/shake/bounce/flash at the music BPM.
 TRANSITION_PULSE: str = "pulse"  # heartbeat zoom throb on every beat
 TRANSITION_SHAKE: str = "shake"  # fast positional jitter (build-ups)

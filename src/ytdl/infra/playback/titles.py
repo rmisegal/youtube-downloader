@@ -44,8 +44,12 @@ def text_drawtext(
 ) -> str:
     """Return one ``drawtext`` filter for a text element (gated to [at,until])."""
     seed = sum(ord(c) for c in text) + len(text) + 1
-    x0 = f"w*{_fmt(x)}" if x is not None else "(w-text_w)/2"
-    y0 = f"h*{_fmt(y)}" if y is not None else "h*0.42"
+    # Spread titles ALL OVER the screen (not just centred) when no x/y is given —
+    # a text-derived pseudo-random anchor in the 8..68% / 12..80% range.
+    sx = 0.08 + (seed * 37 % 60) / 100.0
+    sy = 0.12 + (seed * 53 % 68) / 100.0
+    x0 = f"w*{_fmt(x)}" if x is not None else f"w*{_fmt(round(sx, 3))}-text_w/2"
+    y0 = f"h*{_fmt(y)}" if y is not None else f"h*{_fmt(round(sy, 3))}"
     if effect == TRANSITION_PULSE:  # heart-beat bob at the song tempo (shared BPM math)
         f = max(0.1, (bpm or 120.0) / 60.0)
         y0 = f"({y0})-14*abs(sin(PI*{_fmt(f)}*t))"

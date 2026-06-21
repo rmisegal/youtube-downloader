@@ -16,6 +16,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from ytdl.constants import ADVANCED_TEXT_EFFECTS
+from ytdl.infra.playback.moviepy_tracks import render_moviepy_overlay
 from ytdl.infra.playback.overlay_tracks import build_overlay_command
 from ytdl.infra.playback.render_route import render_command
 from ytdl.infra.playback.renderer import MixRenderer
@@ -48,17 +50,33 @@ def _prepare_all(
     return prepared
 
 
+def _has_advanced_text(overlay: dict) -> bool:
+    """True when any text element needs the MoviePy engine (zoom/rotate/per-letter…)."""
+    return any((getattr(el, "effect", "") or "").lower() in ADVANCED_TEXT_EFFECTS
+               for el in overlay.get("elements", []))
+
+
 def _overlay_pass(
     renderer: MixRenderer, base_file: str, overlay: dict, out_file: str,
     runner: Callable[..., Any], log_path: str | None,
 ) -> None:
-    """Draw the title/subtitle text tracks over the base render (second pass)."""
-    print("[sample] drawing title/subtitle tracks…", flush=True)
-    command = build_overlay_command(renderer, base_file, overlay, out_file)
-    if command is not None:
-        with _log_handle(log_path) as log:
-            runner(command, stdin=subprocess.DEVNULL, stdout=log, stderr=log).wait()
-    if not Path(out_file).exists():  # nothing drawn / overlay failed -> keep the base
+    """Draw the text tracks over the base — MoviePy for advanced effects, else drawtext."""
+    used = False
+    if _has_advanced_text(overlay):
+        print("[sample] drawing animated text tracks (MoviePy)…", flush=True)
+        try:
+            render_moviepy_overlay(base_file, overlay, out_file, canvas=renderer._canvas,
+                                   fps=renderer._fps, ffmpeg_exe=renderer._ffmpeg.exe())
+            used = Path(out_file).exists()
+        except Exception as exc:  # noqa: BLE001 - degrade to drawtext on any MoviePy error
+            print(f"[sample] MoviePy text failed ({exc}); falling back to drawtext.", flush=True)
+    if not used:
+        print("[sample] drawing title/subtitle tracks…", flush=True)
+        command = build_overlay_command(renderer, base_file, overlay, out_file)
+        if command is not None:
+            with _log_handle(log_path) as log:
+                runner(command, stdin=subprocess.DEVNULL, stdout=log, stderr=log).wait()
+    if not Path(out_file).exists():  # nothing drawn -> keep the base
         shutil.copyfile(base_file, out_file)
 
 
