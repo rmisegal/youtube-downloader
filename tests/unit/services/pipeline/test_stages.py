@@ -36,10 +36,11 @@ def test_generate_script_with_fake_provider() -> None:
     assert script[0]["search_query"] == "qa" and script[1]["search_query"] == "qb"
 
 
-def test_pick_prefers_long_enough_else_longest() -> None:
-    cands = [{"video_url": "a", "duration_seconds": 4}, {"video_url": "b", "duration_seconds": 30}]
-    assert _pick(cands, need_sec=10)["video_url"] == "b"
-    assert _pick([{"video_url": "a", "duration_seconds": 4}], need_sec=10)["video_url"] == "a"
+def test_pick_shortest_adequate_else_longest() -> None:
+    cands = [{"video_url": "a", "duration_seconds": 20}, {"video_url": "b", "duration_seconds": 600}]
+    assert _pick(cands, need_sec=10)["video_url"] == "a"  # shortest that still fits (least download)
+    short = [{"video_url": "a", "duration_seconds": 4}, {"video_url": "b", "duration_seconds": 8}]
+    assert _pick(short, need_sec=30)["video_url"] == "b"  # none long enough → the longest
     assert _pick([], need_sec=5) is None
 
 

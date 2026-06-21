@@ -18,12 +18,15 @@ SearchFn = Callable[[str, int], list[dict[str, Any]]]
 
 
 def _pick(candidates: list[dict[str, Any]], need_sec: float) -> dict[str, Any] | None:
-    """Prefer a candidate at least ``need_sec`` long; else the longest; else None."""
+    """Pick the SHORTEST candidate that is still ≥ ``need_sec`` (least to download);
+    if none is long enough, fall back to the longest available. Avoids grabbing
+    hour-long compilations to use a few seconds."""
     if not candidates:
         return None
     long_enough = [c for c in candidates if (c.get("duration_seconds") or 0) >= need_sec]
-    pool = long_enough or candidates
-    return max(pool, key=lambda c: c.get("duration_seconds") or 0)
+    if long_enough:
+        return min(long_enough, key=lambda c: c.get("duration_seconds") or 0)
+    return max(candidates, key=lambda c: c.get("duration_seconds") or 0)
 
 
 def _start_hms(source_sec: int, need_sec: float) -> str:
