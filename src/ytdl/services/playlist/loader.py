@@ -23,6 +23,7 @@ from ytdl.services.playlist.model import (
     Playlist,
     Sync,
 )
+from ytdl.services.playlist.track_model import TrackElement, Tracks
 from ytdl.shared.errors import PlaylistError
 
 # R55: schema versions this loader understands (PRD-playlist §5.2 ``version``).
@@ -90,8 +91,23 @@ def _build_metadata(raw: dict[str, Any]) -> Metadata:
         mix=mix,
         leading=leading,
         sync=sync,
+        tracks=_build_tracks(raw.get("tracks")),
         loop=bool(raw.get("loop", True)),
     )
+
+
+def _build_tracks(raw: Any) -> Tracks:
+    """Parse ``metadata.tracks`` (title/subtitle overlay tracks)."""
+    if not isinstance(raw, dict):
+        return Tracks()
+    titles = tuple(_build_element(e) for e in raw.get("titles", []) if isinstance(e, dict))
+    subs = tuple(_build_element(e) for e in raw.get("subtitles", []) if isinstance(e, dict))
+    return Tracks(titles=titles, subtitles=subs)
+
+
+def _build_element(raw: dict[str, Any]) -> TrackElement:
+    """Parse one overlay-track text element."""
+    return TrackElement(**_subset(raw, TrackElement))
 
 
 def _build_members(raw: Any) -> list[Member]:

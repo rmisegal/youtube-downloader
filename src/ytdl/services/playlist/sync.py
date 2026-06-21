@@ -20,6 +20,34 @@ from ytdl.services.analysis.cut_planner import plan_cuts
 from ytdl.services.analysis.profiles import DEFAULT_TARGET, get_profile, mood_from_bpm
 
 
+def prepare_render(
+    playlist: Any, segments: list[Any], config: Any, *, analyzer: Any = None
+) -> tuple[list[Any], float, dict | None]:
+    """Return ``(synced_segments, dissolve_seconds, overlay_payload)`` for the renderer."""
+    segments = apply_sync(playlist, segments, config, analyzer=analyzer)
+    dissolve = playlist.sync_crossfade() if playlist.sync_enabled() else 0.0
+    return segments, dissolve, build_overlay(playlist, config, analyzer=analyzer)
+
+
+def build_overlay(playlist: Any, config: Any, *, analyzer: Any = None) -> dict | None:
+    """Analyze the leading track and bundle the overlay-track elements + beat grid.
+
+    Returns ``None`` when there are no overlay tracks or no leading audio (beat-timed
+    text needs the leading track's beat grid).
+    """
+    tracks = playlist.metadata.tracks
+    meta = playlist.metadata
+    if tracks.is_empty() or meta.leading_kind() != LEADING_AUDIO or not meta.leading_file():
+        return None
+    result = (analyzer or AudioAnalyzer(config)).analyze(meta.leading_file())
+    return {
+        "elements": tracks.all_elements(),
+        "beats": [b["timestamp_sec"] for b in result["cut_points"].get("beats", [])],
+        "bpm": result["metadata"]["global_bpm"],
+        "total": result["metadata"]["duration_seconds"],
+    }
+
+
 def apply_sync(playlist: Any, segments: list[Any], config: Any, *, analyzer: Any = None) -> list[Any]:
     """Entry point: return sync-placed segments, or ``segments`` unchanged."""
     meta = playlist.metadata

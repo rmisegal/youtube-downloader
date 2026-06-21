@@ -24,6 +24,7 @@ from ytdl.constants import (
     SYNC_AUTO,
     TRANSITION_RANDOM,
 )
+from ytdl.services.playlist.track_model import Tracks
 
 
 @dataclass(frozen=True)
@@ -96,6 +97,7 @@ class Metadata:
     mix: MixToggles = field(default_factory=MixToggles)
     leading: Leading = field(default_factory=Leading)
     sync: Sync = field(default_factory=Sync)
+    tracks: Tracks = field(default_factory=Tracks)
     loop: bool = True
 
     def sync_enabled(self) -> bool:

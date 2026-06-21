@@ -7,7 +7,13 @@ from unittest.mock import MagicMock
 from ytdl.services.mixer.segment import MixSegment
 from ytdl.services.playlist.loader import _build_metadata
 from ytdl.services.playlist.model import Leading, Metadata, Playlist, Sync
-from ytdl.services.playlist.sync import apply_sync, place_on_cuts, sync_segments
+from ytdl.services.playlist.sync import (
+    apply_sync,
+    build_overlay,
+    place_on_cuts,
+    sync_segments,
+)
+from ytdl.services.playlist.track_model import TrackElement, Tracks
 
 
 def _segs(n: int = 2) -> list[MixSegment]:
@@ -71,3 +77,22 @@ def test_loader_parses_sync_crossfade() -> None:
     meta = _build_metadata({"sync": {"enabled": True, "crossfade": 0.5}})
     assert meta.sync_crossfade() == 0.5
     assert _build_metadata({}).sync_crossfade() == 0.0  # default = clean cuts
+
+
+def test_build_overlay_none_without_tracks() -> None:
+    pl = Playlist("1.05", Metadata(leading=Leading(kind="audio", file="s.mp3")), [])
+    assert build_overlay(pl, MagicMock(), analyzer=MagicMock()) is None
+
+
+def test_build_overlay_bundles_elements_and_beat_grid() -> None:
+    analyzer = MagicMock()
+    analyzer.analyze.return_value = {
+        "metadata": {"global_bpm": 120.0, "duration_seconds": 10.0},
+        "cut_points": {"beats": [{"timestamp_sec": 1.0}, {"timestamp_sec": 2.0}]},
+    }
+    pl = Playlist("1.05", Metadata(
+        leading=Leading(kind="audio", file="s.mp3"),
+        tracks=Tracks(titles=(TrackElement(text="HI", at_beat=4),))), [])
+    payload = build_overlay(pl, MagicMock(), analyzer=analyzer)
+    assert payload["bpm"] == 120.0 and payload["total"] == 10.0
+    assert payload["beats"] == [1.0, 2.0] and len(payload["elements"]) == 1

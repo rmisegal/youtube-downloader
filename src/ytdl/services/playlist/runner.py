@@ -32,7 +32,7 @@ from ytdl.services.mixer.segment import MixSegment
 from ytdl.services.playlist.loader import load_playlist
 from ytdl.services.playlist.loader_build import build_segments
 from ytdl.services.playlist.summary import compute_summary
-from ytdl.services.playlist.sync import apply_sync
+from ytdl.services.playlist.sync import prepare_render
 
 _DEFAULT_MODE = ("playback.default_mode", "option2")
 _CROSSFADE = ("playback.crossfade_duration_seconds", 3)
@@ -73,8 +73,8 @@ class PlaylistRunner:
         """Load, build, and route the playlist; return a small report dict."""
         playlist = load_playlist(yaml_path, downloader=self._downloader)
         segments = build_segments(playlist, downloader=self._downloader)
-        segments = apply_sync(playlist, segments, self._config)  # music-sync pre-pass
-        self._dissolve = playlist.sync_crossfade() if playlist.sync_enabled() else 0.0
+        # Music-sync placement + crossfade + overlay-track payload (one analysis).
+        segments, self._dissolve, self._overlay = prepare_render(playlist, segments, self._config)
         meta = playlist.metadata
         # Honest mix gate: subtitle off => drop per-member subtitle requests.
         if not gate_subtitle(meta.active_mix_streams()):
@@ -159,6 +159,7 @@ class PlaylistRunner:
             leading_path=leading_file or None,
             leading_kind=leading_kind, timeline=timeline,
             dissolve=getattr(self, "_dissolve", 0.0),
+            overlay=getattr(self, "_overlay", None),
         )
 
     def _stream(self, meta: Any, segments: list[Any], timeline: bool) -> None:

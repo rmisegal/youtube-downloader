@@ -81,6 +81,7 @@ class Option1Engine:
         leading_kind: str = "none",
         timeline: bool = False,
         dissolve: float = 0.0,
+        overlay: dict | None = None,
     ) -> None:
         """Prep each clip's sample to a small ``.ts`` ONE AT A TIME, then stitch.
 
@@ -103,4 +104,5 @@ class Option1Engine:
             leading_kind=leading_kind,
             timeline=timeline,
             dissolve=dissolve,
+            overlay=overlay,
         )

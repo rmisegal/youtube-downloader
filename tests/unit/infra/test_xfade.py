@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from ytdl.infra.playback.sample_stream import _render_command
+from ytdl.infra.playback.render_route import render_command
 from ytdl.infra.playback.xfade import build_xfade_command
 from ytdl.services.mixer.segment import MixSegment
 
@@ -39,11 +39,11 @@ def test_xfade_command_dissolves_without_black() -> None:
 
 def test_render_routes_to_xfade_only_when_dissolve_set(tmp_path) -> None:
     prepared = [_seg(0, 2, "a.ts"), _seg(2, 2, "b.ts")]
-    concat = _render_command(_renderer(), prepared, "o.mp4", crossfade=2,
+    concat = render_command(_renderer(), prepared, "o.mp4", crossfade=2,
                              leading_path="s.wav", leading_kind="audio",
                              timeline=True, tmp_dir=str(tmp_path), dissolve=0.0)
     assert "concat" in concat and "xfade=transition" not in " ".join(concat)
-    xf = _render_command(_renderer(), prepared, "o.mp4", crossfade=2,
+    xf = render_command(_renderer(), prepared, "o.mp4", crossfade=2,
                          leading_path="s.wav", leading_kind="audio",
                          timeline=True, tmp_dir=str(tmp_path), dissolve=0.5)
     assert "xfade=transition=fade" in " ".join(xf)

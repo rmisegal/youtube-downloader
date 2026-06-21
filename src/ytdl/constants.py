@@ -54,7 +54,8 @@ EFFECT_FADE: str = "fade"
 # Playlist member kinds (metadata member ``type``).
 MEMBER_VIDEO: str = "video"
 MEMBER_IMAGE: str = "image"
-MEMBER_KINDS: tuple[str, ...] = (MEMBER_VIDEO, MEMBER_IMAGE)
+MEMBER_TITLE: str = "title"  # text card: random words over a background image (drawtext)
+MEMBER_KINDS: tuple[str, ...] = (MEMBER_VIDEO, MEMBER_IMAGE, MEMBER_TITLE)
 # Still-image source formats indexed for the mixer/playlist.
 SUPPORTED_IMAGE_FORMATS: tuple[str, ...] = (
     ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif",
