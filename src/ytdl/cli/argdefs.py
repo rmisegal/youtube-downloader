@@ -59,6 +59,26 @@ def add_movie_args(parser: argparse.ArgumentParser) -> None:
         "--produce", dest="produce", action="store_true",
         help="After --build-movie, immediately produce the film (run the playlist).",
     )
+    parser.add_argument(
+        "--make-movie", dest="make_movie", action="store_true",
+        help="Run the full idea+song → mixed-video pipeline (needs --config from --movie-wizard).",
+    )
+    parser.add_argument(
+        "--config", dest="config", default=None,
+        help="Path to a movie pipeline config.json (from --movie-wizard).",
+    )
+    parser.add_argument(
+        "--scenes", dest="scenes", type=int, default=None,
+        help="Override the number of scenes (searches/segments) for --make-movie.",
+    )
+    parser.add_argument(
+        "--vendor", dest="vendor", default=None,
+        help="LLM vendor for the script step (default from config: claude).",
+    )
+    parser.add_argument(
+        "--auth", dest="auth", choices=("cli", "api"), default=None,
+        help="LLM auth: cli (login, default) or api (API key from .env).",
+    )
 
 
 def add_analysis_args(parser: argparse.ArgumentParser) -> None:
