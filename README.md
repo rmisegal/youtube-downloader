@@ -599,10 +599,16 @@ The agent drives the project through two new CLI tools (both exposed via the SDK
 # 1. Find candidate footage (title / url / duration as JSON) — the matcher's search:
 uv run python -m ytdl --search "first moon landing" --results 5
 
-# 2. Turn a matcher segments JSON into a playlist (one ordered video member per scene) and render it:
+# 2. Download every video in the matcher's segments JSON to seg_<n>.mp4 (shows a [N/total] + % bar):
+uv run python -m ytdl --fetch-movie "C:\movie\segments.json" --dir "C:\movie\videos"
+
+# 3. Turn the segments JSON into a playlist (one ordered video member per scene) and render it:
 uv run python -m ytdl --build-movie "C:\movie\segments.json" --dir "C:\movie\videos" --produce
 #    add  --leading "score.mp3"  for a music score instead of the clips' own audio
 ```
+
+Long steps show progress on the console: downloads print a `[download] … 40% … ETA` line (and `--fetch-movie`
+adds `[fetch N/total]`), clip prep prints `[sample] preparing i/N`, and the MoviePy text pass shows a bar.
 
 The download sub-agent saves each segment's video as `seg_<sequence_number>.mp4` in the videos folder; the
 builder writes `movie.yaml` (each member plays its exact `start_time` for `duration_seconds`), which the mixer

@@ -32,3 +32,21 @@ class MovieMixin:
             load_segments(segments_path), video_dir,
             leading_audio=leading_audio, out_path=out_path,
         )
+
+    def fetch_movie(self, segments_path: str, video_dir: str) -> dict[str, list[int]]:
+        """Download each segment's video to ``seg_<n>.mp4`` with ``[N/total]`` progress."""
+        segs = sorted(load_segments(segments_path), key=lambda s: s.get("sequence_number", 0))
+        done: list[int] = []
+        failed: list[int] = []
+        for i, seg in enumerate(segs, start=1):
+            n = seg.get("sequence_number", i)
+            print(f"[fetch {i}/{len(segs)}] seg_{n}: {seg.get('video_url', '')}", flush=True)
+            try:
+                self.download(seg["video_url"], video=True, output_dir=video_dir,
+                              name=f"seg_{n}", no_playlist=True)
+                done.append(n)
+            except Exception as exc:  # noqa: BLE001 - record + continue with the rest
+                print(f"[fetch] seg_{n} FAILED: {exc}", flush=True)
+                failed.append(n)
+        print(f"[fetch] done: {len(done)}/{len(segs)} ok, failed={failed}", flush=True)
+        return {"downloaded": done, "failed": failed}

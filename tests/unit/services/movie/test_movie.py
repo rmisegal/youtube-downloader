@@ -54,6 +54,23 @@ def test_build_movie_with_leading_audio(tmp_path) -> None:
     assert "audio: false" in txt and "leading: { kind: audio, file: 'song.mp3' }" in txt
 
 
+def test_fetch_movie_downloads_each_segment(tmp_path) -> None:
+    from ytdl.sdk.movie_mixin import MovieMixin
+    seg = tmp_path / "s.json"
+    seg.write_text(json.dumps([{"sequence_number": 2, "video_url": "u2"},
+                               {"sequence_number": 1, "video_url": "u1"}]), encoding="utf-8")
+    calls = []
+
+    class _Fake(MovieMixin):
+        def download(self, url, **kw):  # noqa: ANN001, ANN003
+            calls.append((url, kw.get("name")))
+            return {}
+
+    result = _Fake().fetch_movie(str(seg), str(tmp_path))
+    assert result == {"downloaded": [1, 2], "failed": []}
+    assert calls == [("u1", "seg_1"), ("u2", "seg_2")]  # ordered by sequence_number
+
+
 def test_load_segments_validates(tmp_path) -> None:
     good = tmp_path / "s.json"
     good.write_text(json.dumps([{"sequence_number": 1}]), encoding="utf-8")

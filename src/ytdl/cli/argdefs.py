@@ -36,6 +36,10 @@ def add_movie_args(parser: argparse.ArgumentParser) -> None:
         help="Number of --search results to return. Default: 8.",
     )
     parser.add_argument(
+        "--fetch-movie", dest="fetch_movie", default=None,
+        help="Download every video in a segments JSON to seg_<n>.mp4 in --dir (shows progress).",
+    )
+    parser.add_argument(
         "--build-movie", dest="build_movie", default=None,
         help="Build a playlist from a Video Content Matcher segments JSON (videos in --dir).",
     )

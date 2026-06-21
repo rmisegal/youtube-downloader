@@ -55,4 +55,6 @@ def test_none_extra_opts_yields_only_base() -> None:
     dl = BaseDownloader(ConfigManager(data={"version": "1.00"}), extra_opts=None)
     with patch("ytdl.infra.ffmpeg.FfmpegLocator.exe", return_value=FAKE_EXE):
         opts = dl.build_base_opts(OUT_DIR, "x")
-    assert set(opts) == {"outtmpl", "ffmpeg_location"}
+    # base = output + ffmpeg + the clean progress hook (noprogress + progress_hooks).
+    assert set(opts) == {"outtmpl", "ffmpeg_location", "noprogress", "progress_hooks"}
+    assert opts["noprogress"] is True and callable(opts["progress_hooks"][0])

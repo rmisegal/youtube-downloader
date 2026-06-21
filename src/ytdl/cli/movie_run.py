@@ -32,6 +32,18 @@ def run_search(args) -> int:  # noqa: ANN001 - argparse.Namespace
     return EXIT_SUCCESS
 
 
+def run_fetch_movie(args) -> int:  # noqa: ANN001 - argparse.Namespace
+    """Download every segment's video to seg_<n>.mp4 with [N/total] progress."""
+    _LOGGER.info("phase=fetch-movie json=%s dir=%s", args.fetch_movie, args.dir)
+    try:
+        result = YoutubeDownloaderSDK().fetch_movie(args.fetch_movie, args.dir or ".")
+    except (OSError, ValueError) as exc:
+        return _fail("Could not read the segments JSON", exc, EXIT_USAGE)
+    except Exception as exc:  # noqa: BLE001 - top-level CLI boundary
+        return _fail("Unexpected error", exc, EXIT_GENERIC_ERROR)
+    return EXIT_SUCCESS if not result["failed"] else EXIT_GENERIC_ERROR
+
+
 def run_build_movie(args) -> int:  # noqa: ANN001 - argparse.Namespace
     """Build a playlist from a matcher segments JSON; optionally produce the film."""
     _LOGGER.info("phase=build-movie json=%s dir=%s", args.build_movie, args.dir)

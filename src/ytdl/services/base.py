@@ -19,6 +19,7 @@ from ytdl.constants import (
     OUTTMPL_TEMPLATE,
 )
 from ytdl.infra.ffmpeg import FfmpegLocator
+from ytdl.services.dl_progress import make_progress_hook
 from ytdl.shared.config import ConfigManager
 
 
@@ -58,6 +59,8 @@ class BaseDownloader:
         opts: dict[str, Any] = {
             "outtmpl": str(Path(output_dir) / tail),
             "ffmpeg_location": self._ffmpeg.exe(),
+            "noprogress": True,  # replace yt-dlp's \r bar with a clean, log-friendly hook
+            "progress_hooks": [make_progress_hook()],
         }
         # Throttle/JS-runtime opts injected by the SDK; base essentials win.
         for key, value in self._extra_opts.items():

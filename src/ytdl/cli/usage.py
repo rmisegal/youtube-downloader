@@ -63,8 +63,9 @@ Sampler with a fixed per-clip play time and the FFmpeg engine:
 Play / save / stream a declarative YAML playlist:
   uv run python -m ytdl --playlist-file "C:\\lists\\show.yaml"
 
-Movie-agent tools (search YouTube, then build a film from a segments JSON):
+Movie-agent tools (search, download with progress, then build/produce a film):
   uv run python -m ytdl --search "city timelapse 4k" --results 5
+  uv run python -m ytdl --fetch-movie "segments.json" --dir "C:\\movie\\videos"
   uv run python -m ytdl --build-movie "segments.json" --dir "C:\\movie\\videos" --produce
 
 Flags:
@@ -84,6 +85,7 @@ Flags:
   --analyze         Analyze a song's beats/bars/phrases/sections to JSON/CSV.
   --search          Search YouTube; print candidate videos (+durations) as JSON.
   --results         Number of --search results. Default 8.
+  --fetch-movie     Download every video in a segments JSON to seg_<n>.mp4 (with progress).
   --build-movie     Build a playlist from a Video Content Matcher segments JSON.
   --leading         Optional music score for --build-movie (else clips keep audio).
   --produce         After --build-movie, render the film immediately.
