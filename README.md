@@ -540,19 +540,39 @@ members:
 | `at_beat` / `for_beats` | **beat** timing — start at this leading-track beat, hold for N beats (resolved from the analyzed grid) |
 | `at` / `until` | **seconds** timing — used when `at_beat` is absent |
 | `transition` | in/out transition — `fade` → a soft **alpha** fade in/out (no black) |
-| `effect` | shared effect name — `pulse` → a beat-synced **bob** at the song BPM |
-| `direction` | **move** across the screen: `left` / `right` / `up` / `down` (omit = static) |
+| `effect` | animation — see the catalogue below (omit = static at the anchor) |
+| `direction` | for `move` / `effect: move` — `left` / `right` / `up` / `down` |
 | `color` | text colour (name or `#RRGGBB`); omit = auto |
-| `x` / `y` | position as a **0–1 fraction** of width/height (omit = centred / `0.42`) |
+| `x` / `y` | position as a **0–1 fraction** of width/height; **omit = a random spot all over the screen** |
 | `fontsize` | pixel size (omit = auto) |
+
+**Effect catalogue** (`effect:`):
+
+| Effect | Motion | Engine |
+|--------|--------|--------|
+| *(none)* / `static` | held at the (random) anchor | drawtext (fast) |
+| `move` (+`direction`) | slides across the screen | drawtext (fast) |
+| `pulse` | beat-synced bob at the song BPM | drawtext (fast) |
+| `zoomin` / `zoomout` | true scale in / out | MoviePy |
+| `rotate` | spins 360° | MoviePy |
+| `circle` | travels a circular path | MoviePy |
+| `spiralin` / `spiralout` | circular path spiralling in / out | MoviePy |
+| `explode` | the word **breaks into letters** that fly outward | MoviePy (per-letter) |
+| `assemble` | letters **fly in from all sides** and form the word | MoviePy (per-letter) |
+| `rain` | letters **fall from the top** like raindrops to form the word | MoviePy (per-letter) |
+
+`transition: fade` adds a soft in/out fade to any of them. **Hybrid engine:** simple effects render fast via
+ffmpeg `drawtext`; the advanced ones use **MoviePy** (true scaling/rotation + per-letter motion `drawtext`
+can't do), via the bundled `imageio-ffmpeg` + Pillow — no ImageMagick. Positions are kept on-screen.
 
 **Timing** is **beats-preferred** (`at_beat`/`for_beats`, snapped to the music) with a **seconds** fallback
 (`at`/`until`). The leading track is analyzed once; its beat grid feeds both the visual sync and the text timing.
 Z-order: visuals (bottom) → titles → subtitles (top).
 
-> **Render cost:** overlay tracks add a **second re-encoding pass** over the base (the text is drawn on every
-> frame in its window), so a playlist with `tracks:` renders slower than visuals-only — the documented trade-off
-> for independent text layers. `.srt` import + per-beat colour cycling are future work.
+> **Render cost:** overlay tracks add a **second re-encoding pass** over the base; an **advanced** (MoviePy)
+> effect is **notably slower** (Python frame compositing) — the documented trade-off for true scale/rotation and
+> per-letter motion. Use simple effects for speed, advanced for spectacle. `.srt` import + per-beat colour
+> cycling are future work.
 
 ---
 

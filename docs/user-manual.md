@@ -571,21 +571,41 @@ members:
 | `at_beat` / `for_beats` | **Beat** timing (preferred): start at this leading-track beat, hold for N beats — snaps to the music. |
 | `at` / `until` | **Seconds** timing — used only when `at_beat` is absent. |
 | `transition` | In/out transition. `fade` → a soft **alpha** fade in/out (never to black). |
-| `effect` | Shared effect name. `pulse` → a beat-synced **bob** at the song's BPM. |
-| `direction` | **Move** across the screen: `left` / `right` / `up` / `down`. Omit = static. |
+| `effect` | Animation — see the catalogue below. Omit = static at the anchor. |
+| `direction` | For `move` — `left` / `right` / `up` / `down`. |
 | `color` | Text colour — a name (`yellow`) or `#RRGGBB`. Omit = auto-picked. |
-| `x` / `y` | Position as a **0–1 fraction** of width / height. Omit = centred / `0.42`. |
+| `x` / `y` | Position as a **0–1 fraction** of width / height. **Omit = a random spot all over the screen.** |
 | `fontsize` | Pixel size. Omit = auto. |
 
-**When/why:** use a **title** for occasional big callouts (a slogan that slides in, pulses on the drop, fades
-out); use a **subtitle** for a steady caption near the bottom. Timing in **beats** keeps text locked to the
-music; **seconds** is there for a hand-placed caption. The leading track is analyzed once — its beat grid feeds
-both the visual sync and the text timing. Z-order is visuals → titles → subtitles (top).
+**Effect catalogue (`effect:`)** — `transition: fade` adds a soft in/out fade to any of them:
 
-> **Render cost.** Overlay tracks add a **second re-encoding pass** over the base render (the text is drawn on
-> every frame in its window), so a playlist with `tracks:` is **slower to render** than visuals-only — the
-> trade-off for independent text layers. Currently single-colour per element (per-beat colour cycling) and
-> plain text (no `.srt` import / rich styling) — both noted as future work.
+| Effect | What it does | Engine |
+|--------|--------------|--------|
+| *(none)* / `static` | held at the (random) anchor | drawtext — fast |
+| `move` (+ `direction`) | slides across the screen | drawtext — fast |
+| `pulse` | beat-synced bob at the song BPM | drawtext — fast |
+| `zoomin` / `zoomout` | true scale in / out | MoviePy |
+| `rotate` | spins 360° | MoviePy |
+| `circle` | travels a circular path | MoviePy |
+| `spiralin` / `spiralout` | circular path spiralling in / out | MoviePy |
+| `explode` | the word breaks into letters that fly outward | MoviePy (per-letter) |
+| `assemble` | letters fly in from all sides to form the word | MoviePy (per-letter) |
+| `rain` | letters fall from the top like raindrops to form the word | MoviePy (per-letter) |
+
+**Hybrid engine:** simple effects (static/move/pulse) render fast via ffmpeg `drawtext`; the advanced ones use
+**MoviePy** (true scaling/rotation and per-letter motion that `drawtext` cannot do), through the bundled
+`imageio-ffmpeg` + Pillow (no ImageMagick). Text is kept on-screen.
+
+**When/why:** use a **title** for big callouts (a slogan that rotates in, explodes, or rains down); use a
+**subtitle** for a steady caption near the bottom. Timing in **beats** keeps text locked to the music; **seconds**
+is there for a hand-placed caption. The leading track is analyzed once — its beat grid feeds both the visual sync
+and the text timing. Z-order is visuals → titles → subtitles (top).
+
+> **Render cost.** Overlay tracks add a **second re-encoding pass** over the base render. A **simple** (drawtext)
+> effect is fairly cheap; an **advanced** (MoviePy) effect is **notably slower** (Python frame compositing) — the
+> trade-off for true scale/rotation and per-letter motion. Use simple effects for speed, advanced for spectacle.
+> Currently single-colour per element (per-beat colour cycling) and plain text (no `.srt` import / rich styling)
+> — both noted as future work.
 
 ---
 
