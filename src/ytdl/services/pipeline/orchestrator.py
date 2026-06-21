@@ -75,7 +75,8 @@ class MoviePipeline:
 
     def _fetch(self, videos: Path, segments: list[dict[str, Any]]) -> tuple[list[int], list[int]]:
         def download(url: str, name: str) -> Any:
-            return self._sdk.download(url, video=True, output_dir=str(videos), name=name, no_playlist=True)
+            return self._sdk.download(url, video=True, output_dir=str(videos), name=name,
+                                      no_playlist=True, resolution=self._cfg.download_resolution)
         return fetch_segments(download, segments, str(videos))
 
     def _build_playlist(self, build: Path, videos: Path) -> str:
