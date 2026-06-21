@@ -17,16 +17,19 @@ from typing import Any
 SearchFn = Callable[[str, int], list[dict[str, Any]]]
 
 
-def _pick(candidates: list[dict[str, Any]], need_sec: float) -> dict[str, Any] | None:
-    """Pick the SHORTEST candidate that is still ≥ ``need_sec`` (least to download);
-    if none is long enough, fall back to the longest available. Avoids grabbing
-    hour-long compilations to use a few seconds."""
+def _pick(candidates: list[dict[str, Any]], need_sec: float,
+          used: set[str] | None = None) -> dict[str, Any] | None:
+    """Pick the SHORTEST candidate ≥ ``need_sec`` (least to download), PREFERRING one
+    whose video isn't already ``used`` by another scene (so each music section gets a
+    different clip). Falls back to the longest, then to a reused video, if needed."""
     if not candidates:
         return None
-    long_enough = [c for c in candidates if (c.get("duration_seconds") or 0) >= need_sec]
+    fresh = [c for c in candidates if c.get("video_url") not in (used or set())]
+    pool = fresh or candidates
+    long_enough = [c for c in pool if (c.get("duration_seconds") or 0) >= need_sec]
     if long_enough:
         return min(long_enough, key=lambda c: c.get("duration_seconds") or 0)
-    return max(candidates, key=lambda c: c.get("duration_seconds") or 0)
+    return max(pool, key=lambda c: c.get("duration_seconds") or 0)
 
 
 def _start_hms(source_sec: int, need_sec: float) -> str:
@@ -37,9 +40,10 @@ def _start_hms(source_sec: int, need_sec: float) -> str:
     return f"{start // 3600:02d}:{(start % 3600) // 60:02d}:{start % 60:02d}"
 
 
-def match_one(search_fn: SearchFn, scene: dict[str, Any], results: int) -> dict[str, Any] | None:
+def match_one(search_fn: SearchFn, scene: dict[str, Any], results: int,
+              used: set[str] | None = None) -> dict[str, Any] | None:
     """Search the scene's query and build one segment, or None if nothing matched."""
-    pick = _pick(search_fn(scene["search_query"], results), scene["duration_sec"])
+    pick = _pick(search_fn(scene["search_query"], results), scene["duration_sec"], used)
     if not pick:
         return None
     return {
@@ -58,13 +62,16 @@ def match_scenes(
     scn_dir = Path(build_dir) / "scenarios"
     scn_dir.mkdir(parents=True, exist_ok=True)
     segments: list[dict[str, Any]] = []
+    used: set[str] = set()  # videos already chosen → keep each scene's clip distinct
     for scene in script:
         cache = scn_dir / f"scn_{scene['scenario_number']}.json"
         if cache.exists():
-            segments.append(json.loads(cache.read_text(encoding="utf-8")))
-            continue
-        seg = match_one(search_fn, scene, results)
+            seg = json.loads(cache.read_text(encoding="utf-8"))
+        else:
+            seg = match_one(search_fn, scene, results, used)
+            if seg:
+                cache.write_text(json.dumps(seg, indent=2, ensure_ascii=False), encoding="utf-8")
         if seg:
-            cache.write_text(json.dumps(seg, indent=2, ensure_ascii=False), encoding="utf-8")
+            used.add(seg.get("video_url", ""))
             segments.append(seg)
     return segments

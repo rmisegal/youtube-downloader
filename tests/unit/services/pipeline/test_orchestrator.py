@@ -36,11 +36,14 @@ class _FakeSDK:
 
     def analyze_audio(self, path, **kw):  # noqa: ANN001, ANN003
         self.calls.append(("analyze", path))
-        return {"metadata": {"duration_seconds": 24.0},
-                "cut_points": {"bars": [{"timestamp_sec": i * 2.0} for i in range(12)]}}
+        return {"metadata": {"duration_seconds": 24.0, "global_bpm": 120.0},
+                "cut_points": {"bars": [{"timestamp_sec": i * 2.0} for i in range(12)],
+                               "beats": [{"timestamp_sec": i * 0.5} for i in range(48)]}}
 
     def search(self, query, *, results=6):  # noqa: ANN001
-        return [{"video_url": f"u-{query}", "video_title": "T", "duration_seconds": 60}]
+        # several candidates per query so MATCH can pick a DISTINCT one per scene
+        return [{"video_url": f"u-{query}-{i}", "video_title": "T", "duration_seconds": 60}
+                for i in range(5)]
 
     def download(self, url, **kw):  # noqa: ANN001, ANN003
         self.calls.append(("download", url, kw.get("sections")))
@@ -61,7 +64,8 @@ class _FakeSDK:
 def _provider():
     class _P:
         def complete(self, prompt, *, system=None):  # noqa: ANN001
-            return '[{"visual_description":"d","search_query":"q"}]'
+            scenes = [{"visual_description": f"d{i}", "search_query": f"q{i}"} for i in range(200)]
+            return json.dumps(scenes)
     return _P()
 
 
@@ -78,6 +82,20 @@ def test_pipeline_runs_all_stages(tmp_path) -> None:
     # footage is fetched as a bounded section (in-point window), not the whole video
     assert any(c[0] == "download" and c[2] is not None for c in sdk.calls)
     assert (build / "build_segments.json").exists()  # build uses in-point 0 clips
+
+
+def test_pipeline_auto_one_scene_per_section_no_repeats(tmp_path) -> None:
+    # scene_target=0 (default) → one unique scene per music section; segments == cuts,
+    # so the build places each clip once (no cycling/duplication).
+    cfg = MovieConfig(topic="x", leading="song.mp3", scene_target=0, output_dir=str(tmp_path))
+    sdk = _FakeSDK()
+    result = MoviePipeline(sdk, cfg, provider=_provider()).run()
+    grid = json.loads((Path(result["build_dir"]) / "structure.json").read_text(encoding="utf-8"))
+    assert len(grid) > 6  # many sections (not the old fixed handful)
+    assert result["matched"] == len(grid)  # one matched clip per section
+    urls = [s["video_url"] for s in
+            json.loads((Path(result["build_dir"]) / "segments.json").read_text(encoding="utf-8"))]
+    assert len(set(urls)) == len(urls)  # every section got a DISTINCT search/clip
 
 
 def test_pipeline_resumes_completed_structure(tmp_path) -> None:

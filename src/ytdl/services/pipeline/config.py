@@ -25,7 +25,9 @@ class MovieConfig:
     description: str = ""
     vibe: str = ""
     leading: str = ""            # leading audio path ("" → no soundtrack)
-    scene_target: int = 24       # number of scenes (searches/segments)
+    # 0 = AUTO: one unique scene per music section (no repeats — the default). A
+    # positive value CAPS the scene count (fewer searches, but clips will repeat).
+    scene_target: int = 0
     sync_target: str = "video_art"
     mode: str = "bar"
     scene_seconds: float = 6.0   # per-scene length when there is no leading audio

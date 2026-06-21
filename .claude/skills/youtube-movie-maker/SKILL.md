@@ -33,8 +33,17 @@ Write these fields to `config.json` (schema = `MovieConfig`). The user can inste
 ```
 uv run python -m ytdl --plan-movie --config config.json
 ```
-This analyses the leading song and writes `structure.json` (the bar-snapped scenario
-grid: N slots, each with in/out seconds + section). It prints the build folder.
+This analyses the leading song and writes `structure.json` — **one slot per music
+section** (the same beat-cut grid the build will use), so **every section gets its OWN
+clip with no repeats** (the default, `scene_target: 0`).
+
+**No-duplication policy (ask the user):** read `structure.json` and note its count N
+(e.g. ~70 sections for a 3-min song). That means **N searches + N downloads**. Before
+proceeding, tell the user the count + rough time and **ask how to proceed**:
+- **Full unique** (recommended) — keep `scene_target: 0`; each section a distinct clip.
+- **Cap to M scenes** — set `scene_target: M`; faster/cheaper, but clips **repeat**
+  (M unique clips cycle to fill the song).
+Only fall back to duplication if the user opts to cap. Never silently repeat.
 
 ### 2 — Script it  (skill: **movie-script-writer**)
 Invoke the `movie-script-writer` skill with `config.json` + `structure.json`; it writes

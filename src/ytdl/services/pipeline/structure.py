@@ -11,6 +11,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from ytdl.services.analysis.cut_planner import plan_cuts
+from ytdl.services.analysis.profiles import get_profile, mood_from_bpm
+
 
 def _section_at(t: float, sections: list[dict[str, Any]]) -> str:
     """Label of the section containing time ``t`` (last section that started by ``t``)."""
@@ -26,6 +29,32 @@ def _even_indices(count: int, picks: int) -> list[int]:
     if picks <= 1 or count <= 1:
         return [0]
     return sorted({round(i * (count - 1) / (picks - 1)) for i in range(picks)})
+
+
+def _slots_from_times(times: list[float], total: float, sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Build scene slots from ordered cut times (each slot spans to the next cut)."""
+    ordered = sorted(t for t in times if 0 <= t < total)
+    slots: list[dict[str, Any]] = []
+    for i, at in enumerate(ordered):
+        until = ordered[i + 1] if i + 1 < len(ordered) else (total or at + 6.0)
+        if until <= at:
+            continue
+        slots.append({
+            "index": len(slots) + 1, "at": round(at, 3), "until": round(until, 3),
+            "duration": round(until - at, 3), "section": _section_at(at, sections),
+        })
+    return slots
+
+
+def grid_from_cuts(analysis: dict[str, Any], sync_target: str, mode: str) -> list[dict[str, Any]]:
+    """One scene per SYNC cut — uses the SAME ``plan_cuts`` the build will, so the
+    scene count equals the beat-slot count → every music section gets its OWN clip
+    (no cycling/duplication)."""
+    cut = analysis.get("cut_points", {})
+    total = float(analysis.get("metadata", {}).get("duration_seconds", 0.0))
+    bpm = float(analysis.get("metadata", {}).get("global_bpm", 120.0))
+    cuts = plan_cuts(cut, get_profile(sync_target), mood=mood_from_bpm(bpm), mode=mode)
+    return _slots_from_times([c["timestamp_sec"] for c in cuts], total, list(cut.get("sections", [])))
 
 
 def build_scenario_grid(analysis: dict[str, Any], target: int) -> list[dict[str, Any]]:

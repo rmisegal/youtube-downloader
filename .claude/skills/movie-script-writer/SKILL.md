@@ -41,6 +41,10 @@ array with **exactly one object per slot**, in order:
 Rules:
 - One scene per `structure.json` slot; copy `index→scenario_number`, `at→start_sec`,
   `duration→duration_sec`, `section` through unchanged. Do not invent extra scenes.
+- **Every scene must be DISTINCT** — a different subject and a **different
+  `search_query`** per slot, so each music section becomes a *different* movie section.
+  Do NOT repeat a query or describe the same shot twice; vary location/subject/angle
+  across the whole song (the no-duplication default depends on this).
 - Make `visual_description` match the **section energy** (calm intros, high-energy
   choruses) and tell a coherent story across the song that fits `topic`/`vibe`.
 - Make `search_query` a **short, literal YouTube query** likely to return REAL stock/

@@ -44,6 +44,12 @@ def test_pick_shortest_adequate_else_longest() -> None:
     assert _pick([], need_sec=5) is None
 
 
+def test_pick_prefers_unused_video() -> None:
+    cands = [{"video_url": "a", "duration_seconds": 20}, {"video_url": "b", "duration_seconds": 30}]
+    # 'a' is shorter but already used → pick the fresh 'b' (distinct clip per scene)
+    assert _pick(cands, need_sec=10, used={"a"})["video_url"] == "b"
+
+
 def test_start_hms_leaves_room() -> None:
     assert _start_hms(0, 6) == "00:00:00"
     assert _start_hms(100, 6) != "00:00:00"  # long source → a mid in-point

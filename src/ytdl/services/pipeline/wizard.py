@@ -37,7 +37,9 @@ class MovieWizard:
         cfg.idea = p.ask("One-line movie idea")
         cfg.leading = p.ask_path("Leading audio file (blank = no soundtrack)")
         cfg.output_dir = p.ask_path("Output folder", default=str(Path.home() / "movies"))
-        cfg.scene_target = p.ask_int("Number of scenes", default=cfg.scene_target)
+        cfg.scene_target = p.ask_int(
+            "Scenes (0 = one per music section, no repeats; or a number to cap)",
+            default=cfg.scene_target)
         if cfg.has_leading:
             cfg.sync_target = p.choose("Beat-sync style", SYNC_TARGETS, default=cfg.sync_target)
             cfg.mode = p.choose("Cut rhythm", MODES, default=cfg.mode)

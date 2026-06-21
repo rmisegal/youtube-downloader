@@ -21,7 +21,7 @@ from ytdl.services.pipeline.match_stage import match_scenes
 from ytdl.services.pipeline.report import write_report
 from ytdl.services.pipeline.script_stage import generate_script
 from ytdl.services.pipeline.state import StageState
-from ytdl.services.pipeline.structure import build_scenario_grid
+from ytdl.services.pipeline.structure import build_scenario_grid, grid_from_cuts
 
 _SEARCH_RESULTS = 6
 
@@ -50,10 +50,14 @@ class MoviePipeline:
             return json.loads(path.read_text(encoding="utf-8"))
         if self._cfg.has_leading:
             analysis = self._sdk.analyze_audio(self._cfg.leading)
+            if self._cfg.scene_target > 0:  # explicit cap → even sample (clips will repeat)
+                grid = build_scenario_grid(analysis, self._cfg.scene_target)
+            else:  # default: one scene per music section → no repeats
+                grid = grid_from_cuts(analysis, self._cfg.sync_target, self._cfg.mode)
         else:
-            total = self._cfg.scene_target * self._cfg.scene_seconds
-            analysis = {"metadata": {"duration_seconds": total}, "cut_points": {}}
-        grid = build_scenario_grid(analysis, self._cfg.scene_target)
+            count = self._cfg.scene_target or 12
+            analysis = {"metadata": {"duration_seconds": count * self._cfg.scene_seconds}, "cut_points": {}}
+            grid = build_scenario_grid(analysis, count)
         _write(path, grid)
         state.mark_done("structure", scenes=len(grid))
         return grid
