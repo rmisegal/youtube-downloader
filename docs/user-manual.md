@@ -43,6 +43,8 @@
   visuals on an **absolute timeline**, and animate images with transitions.
 * **Analyze music** (beats / bars / phrases / sections) and **auto-sync** playlist transitions to the song —
   including **beat-reactive effects** (heartbeat pulse, shake, bounce, flash) that move in time with the BPM.
+* Add **independent text tracks** (titles / subtitles) that overlay the visuals on their **own** beat-timeline —
+  sliding, pulsing and fading text drawn above images/video that change underneath (see §11.1).
 
 The engine is `yt-dlp` + FFmpeg (`imageio-ffmpeg`) + VLC (`python-vlc`) + `librosa` for music analysis.
 
@@ -536,6 +538,54 @@ members:
 > **Validation & errors.** A malformed playlist (bad YAML, missing `version`/`id`/`file`, unknown member file,
 > unsupported version) exits with **code 8**. Save of an image/timeline playlist is a current limitation (it is
 > skipped with a warning; use `display`).
+
+### 11.1 Multi-track text overlays — `metadata.tracks` (titles / subtitles)
+
+The `members:` list is the **visual** track (images + videos). On top of it you can add **independent overlay
+tracks of text** under `metadata.tracks` — a **titles** track and a **subtitles** track. Each text element has
+its **own beat-timeline**, its **own transition + effects**, and is drawn **over** the visuals (so a title can
+slide and pulse while the images change underneath). Text is rendered with FFmpeg `drawtext` in a light second
+pass; effect/colour selection reuses the **same shared vocabulary** as the image track.
+
+```yaml
+metadata:
+  leading: { kind: audio, file: 'C:\media\song.mp3' }
+  sync:    { enabled: true, target: video_art, mode: bar }
+  tracks:
+    titles:                       # each its OWN timeline, drawn above the visuals
+      - { text: "SEGAL MIX", at_beat: 16, for_beats: 8, transition: fade,
+          effect: pulse, direction: left, color: yellow }   # slide left + pulse + fade
+      - { text: "LIVE", at: 30, until: 34, color: cyan }     # seconds timing, static
+    subtitles:                     # same machinery, typically bottom-of-frame captions
+      - { text: "chapter one", at_beat: 0, for_beats: 32, color: white, y: 0.85 }
+members:
+  - { id: 1, type: image, file: a.jpg }
+  - { id: 2, type: video, file: clip.mp4, start_time: 30 }
+```
+
+**Element fields** (titles and subtitles share them):
+
+| Field | Meaning · when/why |
+|-------|--------------------|
+| `text` | REQUIRED. The words to draw. |
+| `at_beat` / `for_beats` | **Beat** timing (preferred): start at this leading-track beat, hold for N beats — snaps to the music. |
+| `at` / `until` | **Seconds** timing — used only when `at_beat` is absent. |
+| `transition` | In/out transition. `fade` → a soft **alpha** fade in/out (never to black). |
+| `effect` | Shared effect name. `pulse` → a beat-synced **bob** at the song's BPM. |
+| `direction` | **Move** across the screen: `left` / `right` / `up` / `down`. Omit = static. |
+| `color` | Text colour — a name (`yellow`) or `#RRGGBB`. Omit = auto-picked. |
+| `x` / `y` | Position as a **0–1 fraction** of width / height. Omit = centred / `0.42`. |
+| `fontsize` | Pixel size. Omit = auto. |
+
+**When/why:** use a **title** for occasional big callouts (a slogan that slides in, pulses on the drop, fades
+out); use a **subtitle** for a steady caption near the bottom. Timing in **beats** keeps text locked to the
+music; **seconds** is there for a hand-placed caption. The leading track is analyzed once — its beat grid feeds
+both the visual sync and the text timing. Z-order is visuals → titles → subtitles (top).
+
+> **Render cost.** Overlay tracks add a **second re-encoding pass** over the base render (the text is drawn on
+> every frame in its window), so a playlist with `tracks:` is **slower to render** than visuals-only — the
+> trade-off for independent text layers. Currently single-colour per element (per-beat colour cycling) and
+> plain text (no `.srt` import / rich styling) — both noted as future work.
 
 ---
 

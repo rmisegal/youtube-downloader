@@ -507,6 +507,55 @@ re-encoding render; clean-cut concat stays the fast default).
 
 ---
 
+## Multi-track text overlays — titles / subtitles (PRD-tracks)
+
+On top of the visual track (images + videos) you can add **independent overlay tracks** of **text** — a
+**titles** track and a **subtitles** track — under `metadata.tracks`. Each text element has its **own
+beat-timeline** (its own in/out), its **own transition and effects**, and is drawn **over** the visuals, so a
+title can slide/pulse while the images change underneath it. Text is rendered with FFmpeg `drawtext` in a light
+second pass over the base; effect/colour selection reuses the **same shared vocabulary** as the visual track.
+
+```yaml
+version: "1.05"
+metadata:
+  leading: { kind: audio, file: 'C:\media\song.mp3' }
+  sync:    { enabled: true, target: video_art, mode: bar }
+  tracks:
+    titles:
+      - { text: "SEGAL MIX", at_beat: 16, for_beats: 8, transition: fade,
+          effect: pulse, direction: left, color: yellow }   # slides left, pulses, fades
+      - { text: "LIVE", at: 30, until: 34, color: cyan }     # seconds timing, static
+    subtitles:
+      - { text: "chapter one", at_beat: 0, for_beats: 32, color: white, y: 0.85 }
+members:
+  - { id: 1, type: image, file: a.jpg }                      # the visual track (unchanged)
+  - { id: 2, type: video, file: clip.mp4, start_time: 30 }
+```
+
+**Element fields** (titles and subtitles share them):
+
+| Field | Meaning |
+|-------|---------|
+| `text` | the words to display (required) |
+| `at_beat` / `for_beats` | **beat** timing — start at this leading-track beat, hold for N beats (resolved from the analyzed grid) |
+| `at` / `until` | **seconds** timing — used when `at_beat` is absent |
+| `transition` | in/out transition — `fade` → a soft **alpha** fade in/out (no black) |
+| `effect` | shared effect name — `pulse` → a beat-synced **bob** at the song BPM |
+| `direction` | **move** across the screen: `left` / `right` / `up` / `down` (omit = static) |
+| `color` | text colour (name or `#RRGGBB`); omit = auto |
+| `x` / `y` | position as a **0–1 fraction** of width/height (omit = centred / `0.42`) |
+| `fontsize` | pixel size (omit = auto) |
+
+**Timing** is **beats-preferred** (`at_beat`/`for_beats`, snapped to the music) with a **seconds** fallback
+(`at`/`until`). The leading track is analyzed once; its beat grid feeds both the visual sync and the text timing.
+Z-order: visuals (bottom) → titles → subtitles (top).
+
+> **Render cost:** overlay tracks add a **second re-encoding pass** over the base (the text is drawn on every
+> frame in its window), so a playlist with `tracks:` renders slower than visuals-only — the documented trade-off
+> for independent text layers. `.srt` import + per-beat colour cycling are future work.
+
+---
+
 ## Secrets / optional environment
 
 Public YouTube videos require **no API key and no secrets**. Optional, user-supplied values may be
