@@ -11,27 +11,7 @@
     "sample_rate": 22050,
     "downbeat_backend": "auto",
     "use_gpu": "auto",
-    "fill_on_phrase_end": true,
-    "section_rules": {
-      "Intro": "phrase",
-      "Verse": "bar",
-      "Build-up": "beat",
-      "Chorus": "beat",
-      "Outro": "phrase"
-    },
-    "tier_transitions": {
-      "beat": "pulse",
-      "bar": "fade",
-      "phrase": "zoomout",
-      "section": "panright"
-    },
-    "section_transitions": {
-      "Intro": "zoomout",
-      "Verse": "fade",
-      "Build-up": "shake",
-      "Chorus": "pulse",
-      "Outro": "zoomout"
-    }
+    "default_target": "video_art"
   },
   "playback": {
     "default_mode": "option2",

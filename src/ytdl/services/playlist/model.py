@@ -73,10 +73,16 @@ class Output:
 
 @dataclass(frozen=True)
 class Sync:
-    """Music-sync selector (``metadata.sync``) — auto-place members on cut-points."""
+    """Music-sync selector (``metadata.sync``) — auto-place members on cut-points.
+
+    ``target`` selects the hardcoded content profile (video_art, dj_party, lecture,
+    …) that drives the transitions + pacing; ``mode`` (auto | beat | half | bar |
+    phrase | section) optionally forces a fixed cut grid.
+    """
 
     enabled: bool = False
     mode: str = SYNC_AUTO
+    target: str = ""
 
 
 @dataclass(frozen=True)
@@ -96,8 +102,12 @@ class Metadata:
         return self.sync.enabled
 
     def sync_mode(self) -> str:
-        """The sync mode (``auto`` = context-aware planner, or a fixed tier)."""
+        """The sync mode (``auto`` = profile/mood pacing, or a fixed grid)."""
         return self.sync.mode
+
+    def sync_target(self) -> str:
+        """The content-target profile name (empty = the configured default)."""
+        return self.sync.target
 
     def active_outputs(self) -> list[str]:
         """Enabled output modes, ordered as :data:`OUTPUT_MODES`."""
@@ -157,3 +167,7 @@ class Playlist:
     def sync_mode(self) -> str:
         """Delegate to :meth:`Metadata.sync_mode`."""
         return self.metadata.sync_mode()
+
+    def sync_target(self) -> str:
+        """Delegate to :meth:`Metadata.sync_target`."""
+        return self.metadata.sync_target()

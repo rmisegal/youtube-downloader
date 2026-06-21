@@ -123,8 +123,8 @@ manual NLE. Design objectives:
    slides/images/B-roll appear in sync above it.
 5. **Mix a music playlist** — several songs as members with crossfades, optionally a leading master track.
 6. **Save a video from YouTube** — the original downloader: `--video` / `--audio` / `--subs`.
-7. **Beat-synced photo slideshow** — 10 holiday photos + a song, `mode: auto` → heartbeat pulse on the chorus,
-   slow zoom on the intro.
+7. **Beat-synced photo slideshow** — 10 holiday photos + a song, `sync: { target: video_art }` → each photo
+   held a bar/half-bar with surprising transitions, beat-by-beat only at the drop.
 8. **Karaoke / lyric backdrop** — a subtitle (lyrics) leading layout over a looping visual.
 9. **Build a VJ loop library** — `--sample-play` to audition a folder fast, keep the good clips.
 10. **Trailer / teaser** — pick in/out points per member (`start_time` / `play_time`), crossfade into a punchy
@@ -189,9 +189,11 @@ members:
 ```powershell
 uv run python -m ytdl --playlist-file "C:\lists\music-video.yaml"
 ```
-The song is analyzed (beats/bars/phrases/sections); images cycle across the cut-points; the **chorus gets a
-heartbeat `pulse`, the build-up gets `shake`, the intro a slow `zoomout`**. If the visuals are shorter than the
-song it **fades out**; if longer, the song **crossfade-loops**.
+The song is analyzed (beats/sections); each image is **held for a full bar or a half-bar** (it does *not* flip on
+every beat), with a transition **pulled at random from the target's pool**; **beat-by-beat** cutting happens
+**only at the run-up to a drop**. Add `sync: { target: dj_party }` for fast, effect-heavy energy, or
+`target: lecture` for long calm holds. If the visuals are shorter than the song it **fades out**; if longer, the
+song **crossfade-loops**.
 
 ### 5.3 Video leading track
 A master video drives the picture **and** length; members supply the audio mix (its own audio is dropped).
@@ -394,15 +396,25 @@ the music's natural grid. It extracts four hierarchical tiers and then plans cut
 * **Sections** — Intro / Verse / Build-up / Chorus / Outro (boundaries from beat-synchronous chroma clustering;
   labels are heuristic).
 
-**Context-Aware Cut Planner (`mode: auto`).** The **section dictates the cut rhythm** (configurable):
-Intro/Outro → **phrase** (slow), Verse → **bar** (steady), Build-up/Chorus → **beat** (energetic), plus
-optional **phrase-end drum-fill bursts** ("visual punctuation"). You can override with a fixed grid:
-`mode: beat | bar | phrase | section`.
+**Hold-based pacing (the fix for "switches too fast").** An object (image/clip/text) is **held on screen for a
+number of BEATS** before it is replaced — it does **not** cut on every beat. In 4/4 time the **standard hold is
+a full bar (4 beats) or a half-bar (2 beats)**. The fast, **beat-by-beat (1)** cutting is a special **"Unique
+Mode"** reserved for **high-impact transitional moments** — the rapid run-up into a **drop** at the end of a
+**Build-up** section. Calm sections (Intro/Outro) hold longer; the Chorus and energetic-tempo tracks tighten to
+a half-bar.
+
+**Content-target lookup table — no LLM needed.** The pacing and the transition pool come from a **hardcoded
+lookup table** of *content targets* (see §11/`sync.target`): **video_art, dj_party, homemade, presentation,
+podcast, road_travel, topic_summary, lecture**. Each target fixes three core parameters — its **transitions**
+(the pool), its **rhythm** type, and its **hold** (beats per object). At runtime the planner **pulls a
+transition at random** from that pool and **chooses the hold conditionally** from the track's **mood**
+(calm/groovy/energetic, derived from BPM) — giving creative, surprising, atmospheric mixes **without any LLM
+analysis of the song**. You can still override the grid with `mode: beat | half | bar | phrase | section`.
 
 **What it can do:**
 * Auto-place any number of image/video members on the song's cut-points (members cycle to fill the track).
-* **Fit the transition to the sync type** (see §10) — fast effects on energetic beats, slow on phrases.
-* Drive **beat-reactive effects** at the exact BPM (pulse/shake/bounce/flash).
+* Pick a fitting transition **at random from the target's curated pool** (the dynamic selection matrix, §10).
+* Drive **beat-reactive effects** at the exact BPM (pulse/shake/bounce/flash) on the held object.
 * Handle length automatically: visuals shorter than the song → audio fades out; longer → song loops.
 
 **Standalone export.** `--analyze` writes the full cut-point map (with `frame_index = round(t × fps)`) to
@@ -422,22 +434,23 @@ families:
 
 **Beat-reactive effects** (oscillate at the analyzed **BPM**):
 
-| Effect | Motion | Best on |
-|--------|--------|---------|
-| `pulse` | heartbeat zoom-throb on each beat | Chorus / beat cuts |
-| `shake` | fast positional jitter | Build-up |
-| `bounce`| vertical bob on the beat | high-energy |
-| `flash` | brightness pulse on the beat | accents |
+| Effect | Motion | Used by (example targets) |
+|--------|--------|---------------------------|
+| `pulse` | heartbeat zoom-throb on each beat | video_art, dj_party |
+| `shake` | fast positional jitter | dj_party |
+| `bounce`| vertical bob on the beat | dj_party |
+| `flash` | brightness pulse on the beat | dj_party |
 
-**Auto-selection & music dependency.**
+**Auto-selection & music dependency (the dynamic selection matrix).**
 * In a **manual** playlist you set `transition:` per image (or `random`, the default, which picks a *static*
   transition — beat effects need a tempo, so they are opt-in).
-* In a **music-synced** playlist the planner **chooses the transition for you** at each cut, fitting it to that
-  cut's musical role via two config maps:
-  * `analysis.tier_transitions` — by tier (beat→pulse, bar→fade, phrase→zoomout, section→panright).
-  * `analysis.section_transitions` — by section label, **overrides** the tier map (Chorus→pulse,
-    Build-up→shake, Verse→fade, Intro/Outro→zoomout).
-* The chosen BPM is attached to each placed clip so beat-reactive effects throb **in time with the song**.
+* In a **music-synced** playlist the planner **chooses the transition for you** at each cut by **pulling at
+  random from the content target's curated transition pool** (the hardcoded lookup table — §9, §11). A
+  `dj_party` mix therefore surprises you with pulse/shake/flash/bounce; a `lecture` stays on calm fades/zooms;
+  `video_art` ranges across the whole set. Because the pool is *curated per target* and the pick is *random*,
+  the result is creative and atmospheric **without any LLM**.
+* The chosen BPM is attached to each placed clip so beat-reactive effects throb **in time with the song**, and
+  the object is **held for its profile's beat-count** before the next pick.
 
 **Placement / overlap.** Members carry an absolute timeline position (`at` … `until`). A later member overlays
 an earlier one (so an image can sit on top of a running video). When slots are **contiguous** (the sync case)
@@ -468,7 +481,9 @@ metadata:
     file: 'C:\media\song.mp3' #   the master file (empty when kind=none).
   sync:                       # music auto-sync (beat-sync):
     enabled: true             #   turn auto-placement ON (requires kind=audio).
-    mode: auto                #   auto | beat | bar | phrase | section.
+    target: video_art         #   content profile: video_art | dj_party | homemade | presentation |
+                              #   podcast | road_travel | topic_summary | lecture. Drives transitions + pacing.
+    mode: auto                #   pacing grid: auto (profile/mood) | beat | half | bar | phrase | section.
   loop: true                  # repeat the show while displaying.
 members:
   - id: 1                     # REQUIRED, unique; members are ordered by id.
@@ -493,8 +508,12 @@ members:
   `subtitle: true` only when you actually want captions burned into the mix.
 * **`leading`** — `audio` for music videos (song is master), `video` for "drive picture from a master clip,
   take sound from members", `none` for a plain crossfade montage.
-* **`sync`** — enable to let the song place your visuals; `mode: auto` for the context-aware feel, a fixed tier
-  for predictable pacing.
+* **`sync`** — enable to let the song place your visuals. **`target`** is the most important knob: it selects a
+  hardcoded profile (transitions pool + pacing) tuned for the kind of video you're making — `dj_party` for fast,
+  energetic, effect-heavy cuts; `lecture`/`podcast`/`presentation` for long, calm holds; `video_art` for a
+  ranging artistic mix; `road_travel`/`homemade`/`topic_summary` for gentle/steady. **`mode: auto`** lets that
+  profile + the track's mood decide the hold (a full bar or a half-bar, beat-by-beat only at a drop); a fixed
+  `mode` (`beat`/`half`/`bar`/`phrase`/`section`) forces a constant grid for predictable pacing.
 * **Member `at`/`until`** — set them yourself for a hand-built timeline (e.g. an image over a video at 0:10–0:18);
   leave them out under `sync` and the planner fills them.
 * **`transition`/`direction`** — art direction per image; omit for `random`, or pick a beat effect for accents.
@@ -522,14 +541,10 @@ Two JSON files in `config/`, each versioned. Defaults are sensible; override onl
     "sample_rate": 22050,                          // analysis sample rate (Hz) — higher = slower, rarely needed.
     "downbeat_backend": "auto",                    // auto|librosa (madmom sidecar reserved for the future).
     "use_gpu": "auto",                             // auto|on|off — GPU is optional & currently unused (see §7.5).
-    "fill_on_phrase_end": true,                    // add drum-fill bursts before phrase boundaries.
-    "section_rules": {                             // section -> cut tier (the context-aware strategy):
-      "Intro":"phrase","Verse":"bar","Build-up":"beat","Chorus":"beat","Outro":"phrase" },
-    "tier_transitions": {                          // cut tier -> transition:
-      "beat":"pulse","bar":"fade","phrase":"zoomout","section":"panright" },
-    "section_transitions": {                       // section -> transition (OVERRIDES tier_transitions):
-      "Intro":"zoomout","Verse":"fade","Build-up":"shake","Chorus":"pulse","Outro":"zoomout" }
-  },
+    "default_target": "video_art"                  // default content profile when a playlist omits sync.target.
+  },                                               // (transitions/pacing per target live in the HARDCODED
+                                                   //  lookup table in code — services/analysis/profiles.py — so
+                                                   //  no LLM and no per-song tuning is needed; see §9/§11.)
   "playback": {                                    // --- mixer / sampler ---
     "default_mode": "option2",                     // option1 (FFmpeg→VLC) | option2 (dual-libVLC).
     "default_selection": "random",                 // random | manual.
@@ -556,8 +571,10 @@ Two JSON files in `config/`, each versioned. Defaults are sensible; override onl
 ```
 **When/why to change common fields:** set `render.width/height` for portrait/HD; lower `render.video_preset`
 (e.g. `medium`) for smaller files; tune `analysis.meter`/`phrase_bars` to the song's time signature; flip
-`use_gpu` to `off` to skip GPU detection entirely; edit `tier_transitions`/`section_transitions` to art-direct
-the auto-sync look; raise `audio.quality` for better mp3.
+`use_gpu` to `off` to skip GPU detection entirely; set `analysis.default_target` to the content profile you use
+most (or pick per-playlist via `sync.target`) to art-direct the auto-sync look; raise `audio.quality` for
+better mp3. (The transition pools, rhythm, and hold-in-beats for each content target are the **hardcoded lookup
+table** in `services/analysis/profiles.py` — edit there to retune a profile.)
 
 ### 12.2 `config/rate_limits.json`
 Protects your YouTube account by capping request volume.

@@ -472,32 +472,25 @@ metadata:
   output:  { display: true }
   mix:     { video: true, audio: false }
   leading: { kind: audio, file: 'C:\media\song.mp3' }   # the soundtrack to follow
-  sync:    { enabled: true, mode: auto }                 # auto = context-aware planner
+  sync:    { enabled: true, target: video_art }          # content profile drives transitions + pacing
 members:
   - { id: 1, type: image, file: a.jpg }                 # at/until are assigned by the planner
   - { id: 2, type: image, file: b.jpg }                 # members cycle across the cut-points
   - { id: 3, type: image, file: c.jpg }
 ```
 
-**Context-aware planner (`mode: auto`)** — the **section** dictates the cut rhythm (config
-`analysis.section_rules`): Intro/Outro → **phrase** (slow), Verse → **bar** (steady), Build-up/Chorus → **beat**
-(energetic), plus phrase-end **drum-fill** bursts. Or force a fixed grid with `mode: beat|bar|phrase|section`.
+**Hold-based pacing — no LLM.** Each object is **held for several beats** (a full bar / half-bar in 4/4), *not*
+flipped on every beat; **beat-by-beat** cutting is a **Unique Mode** reserved for the **run-up to a drop**. A
+hardcoded **content-target lookup table** (`sync.target`) sets the transitions pool, rhythm, and hold per kind
+of video — **video_art, dj_party, homemade, presentation, podcast, road_travel, topic_summary, lecture**. At
+runtime the planner **pulls a transition at random** from that pool and **chooses the hold from the track's
+mood** (BPM) — creative, surprising mixes **with no runtime LLM**. Force a fixed grid with
+`mode: beat|half|bar|phrase|section`.
 
-**Transitions fit the sync type** — each cut carries its tier/section, so the placer picks a matching effect
-(config `analysis.tier_transitions` + `analysis.section_transitions`), including **beat-reactive** effects that
-move *in time with the BPM*:
-
-| Effect | Motion | Fits |
-|--------|--------|------|
-| `pulse` | heartbeat zoom-throb on each beat | Chorus / beat cuts |
-| `shake` | fast positional jitter | Build-up |
-| `bounce` | vertical bob on the beat | high-energy |
-| `flash` | brightness pulse on the beat | accents |
-| `zoomout` / `fade` | slow reveal / dissolve | Intro/Outro / Verse |
-
-Default mapping: Chorus→`pulse` (heartbeat), Build-up→`shake`, Verse→`fade`, Intro/Outro→`zoomout`. Beat-reactive
-effects also work as a manual `transition:` on any image. Verified on a real song: 103.4 BPM, 6 sections, with
-the heartbeat landing on the chorus beats and shake on the build-up.
+**Beat-reactive effects** (oscillate at the BPM) live in the energetic pools: `pulse` (heartbeat zoom), `shake`
+(jitter), `bounce` (bob), `flash` (brightness); calmer targets use `fade`/`zoom`/`pan`. Verified on a real song
+(103.4 BPM): `video_art` holds a half-bar across the body with beat-by-beat only at the drop (≈141 held slots vs
+~300 before), while `lecture`/`podcast` hold far longer (65 / 34 slots).
 
 > **Scale:** contiguous music-sync slots render via a **concat** path — the prepped clips are stream-**copied**
 > (no re-encode), so a full song's hundreds of cut-points render in a couple of seconds regardless of count

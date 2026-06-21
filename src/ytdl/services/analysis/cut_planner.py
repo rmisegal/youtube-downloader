@@ -1,84 +1,86 @@
-"""Context-Aware Cut Planner (PRD-beatsync §4).
+"""Context-aware Cut Planner (PRD-beatsync §4).
 
-The SECTION level dictates the cut tier per segment (config ``section_rules``):
-Intro/Outro→phrase (slow), Verse→bar (steady), Build-up/Chorus→beat (energetic).
-Phrase ends optionally get a drum-fill of quick beat cuts ("visual punctuation").
-
-Each emitted cut carries its ``tier`` + ``section`` so the caller can FIT THE
-TRANSITION to the musical sync type (fast on a beat, slow on a phrase, …). Pure
-logic — no DSP — fully unit-testable.
+Walks the BEAT grid and **holds each object for a number of beats** taken from the
+content-target profile (see :mod:`profiles`): a full bar (4) or a half-bar (2) for
+standard playback, dropping to **beat-by-beat (1) only in the "Unique Mode"** of
+high-impact sections (build-ups / drops). This fixes the "switches on every beat"
+problem — standard playback now lingers. Each emitted cut carries a transition
+pulled at RANDOM from the profile's pool (the dynamic selection matrix). Pure logic.
 """
 
 from __future__ import annotations
 
+import random as _random
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from ytdl.constants import (
-    SECTION_CHORUS,
-    SECTION_INTRO,
-    SECTION_OUTRO,
-    SECTION_VERSE,
-    TIER_BAR,
-    TIER_BEAT,
-    TIER_PHRASE,
-    TIER_SECTION,
+from ytdl.services.analysis.profiles import (
+    HOLD_HALF_BAR,
+    HOLD_UNIQUE,
+    UNIQUE_TAIL_BEATS,
+    ContentProfile,
+    hold_for,
 )
 
-DEFAULT_RULES: dict[str, str] = {
-    SECTION_INTRO: TIER_PHRASE, SECTION_VERSE: TIER_BAR, "Build-up": TIER_BEAT,
-    SECTION_CHORUS: TIER_BEAT, SECTION_OUTRO: TIER_PHRASE,
-}
 Cut = dict[str, Any]
+# Fixed-grid overrides via metadata.sync.mode: a constant hold in beats.
+FIXED_HOLDS = {"beat": 1, "half": 2, "bar": 4, "phrase": 8}
 
 
-def _tier_times(tier: str, lists: dict[str, list[float]]) -> list[float]:
-    return lists.get(tier, lists[TIER_BAR])
+def _in_section(beats: Sequence[float], start: float, end: float) -> list[float]:
+    return [t for t in beats if start <= t < end]
 
 
-def _lists(cut_points: Mapping[str, Any]) -> dict[str, list[float]]:
-    sections = cut_points.get("sections", [])
-    return {
-        TIER_BEAT: [b["timestamp_sec"] for b in cut_points.get("beats", [])],
-        TIER_BAR: [b["timestamp_sec"] for b in cut_points.get("bars", [])],
-        TIER_PHRASE: [p["timestamp_sec"] for p in cut_points.get("phrases", [])],
-        TIER_SECTION: [s["start_sec"] for s in sections],
-    }
+def _picks(sec_beats: list[float], hold: int, unique: bool) -> list[tuple[float, int, bool]]:
+    """Beats to cut on within a section as ``(time, hold_beats, is_unique)``.
 
-
-def _fills(phrases: Sequence[float], beats: Sequence[float], n_fill: int) -> dict[float, tuple[str, str]]:
-    out: dict[float, tuple[str, str]] = {}
-    for p in phrases:
-        for b in [x for x in beats if x < p][-n_fill:]:
-            out[b] = (TIER_BEAT, "fill")
-    return out
+    Standard: every ``hold`` beats. Unique Mode: a half-bar lead-in, then beat-by-beat
+    only across the final :data:`UNIQUE_TAIL_BEATS` (the run-up to the drop).
+    """
+    if not unique:
+        return [(t, hold, False) for t in sec_beats[:: max(1, hold)]]
+    if len(sec_beats) <= UNIQUE_TAIL_BEATS:
+        return [(t, HOLD_UNIQUE, True) for t in sec_beats]
+    lead, tail = sec_beats[:-UNIQUE_TAIL_BEATS], sec_beats[-UNIQUE_TAIL_BEATS:]
+    return ([(t, HOLD_HALF_BAR, False) for t in lead[::HOLD_HALF_BAR]]
+            + [(t, HOLD_UNIQUE, True) for t in tail])
 
 
 def plan_cuts(
-    cut_points: Mapping[str, Any], *, mode: str = "auto",
-    section_rules: Mapping[str, str] | None = None,
-    fill_on_phrase_end: bool = True, n_fill: int = 3,
+    cut_points: Mapping[str, Any], profile: ContentProfile, *,
+    mood: str = "groovy", mode: str = "auto", rng: Any = _random,
 ) -> list[Cut]:
-    """Return ordered cut entries ``{timestamp_sec, tier, section}``.
+    """Return ordered cuts ``{timestamp_sec, transition, section, hold_beats, unique}``.
 
-    ``mode != "auto"`` uses that single tier everywhere; ``"auto"`` is the
-    section-driven strategy + phrase-end fills.
+    ``mode="auto"`` is the profile/mood-driven pacing; a fixed name in
+    :data:`FIXED_HOLDS` (or ``"section"``) forces a constant grid.
     """
-    lists = _lists(cut_points)
-    plan: dict[float, tuple[str, str]] = {}
-    if mode != "auto":
-        for t in _tier_times(mode, lists):
-            plan.setdefault(t, (mode, ""))
-    else:
-        rules = {**DEFAULT_RULES, **(section_rules or {})}
-        for sec in cut_points.get("sections", []):
-            tier = rules.get(sec["label"], TIER_BAR)
-            within = [t for t in _tier_times(tier, lists)
-                      if sec["start_sec"] <= t < sec["end_sec"]]
-            for t in [sec["start_sec"], *within]:
-                plan[t] = (tier, sec["label"])
-        if fill_on_phrase_end:
-            for t, value in _fills(lists[TIER_PHRASE], lists[TIER_BEAT], n_fill).items():
-                plan.setdefault(t, value)
-    return [{"timestamp_sec": round(t, 3), "tier": tr, "section": lab}
-            for t, (tr, lab) in sorted(plan.items()) if t >= 0]
+    beats = [b["timestamp_sec"] for b in cut_points.get("beats", [])]
+    if not beats:
+        return []
+    sections = cut_points.get("sections", []) or [
+        {"start_sec": 0.0, "end_sec": beats[-1] + 1.0, "label": ""}
+    ]
+    cuts: list[Cut] = []
+    for sec in sections:
+        sec_beats = _in_section(beats, sec["start_sec"], sec["end_sec"])
+        if not sec_beats:
+            continue
+        if mode == "section":
+            picks = [(sec_beats[0], len(sec_beats), False)]
+        elif mode in FIXED_HOLDS:
+            picks = _picks(sec_beats, FIXED_HOLDS[mode], mode == "beat")
+        else:
+            hold, unique = hold_for(profile, sec.get("label", ""), mood)
+            picks = _picks(sec_beats, hold, unique)
+        for t, hold_beats, unique in picks:
+            cuts.append({
+                "timestamp_sec": round(float(t), 3),
+                "transition": rng.choice(profile.transitions),
+                "section": sec.get("label", ""), "hold_beats": hold_beats, "unique": unique,
+            })
+    cuts.sort(key=lambda c: c["timestamp_sec"])
+    # Anchor the first cut at the song start so the slots cover [0, total) (concat-safe).
+    if cuts and cuts[0]["timestamp_sec"] > 0:
+        cuts[0] = {**cuts[0], "timestamp_sec": 0.0}
+    return cuts

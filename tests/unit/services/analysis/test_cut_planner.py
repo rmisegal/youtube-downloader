@@ -1,42 +1,63 @@
-"""Unit tests for the Context-Aware Cut Planner (pure logic)."""
+"""Unit tests for the hold-based Context-Aware Cut Planner (pure logic)."""
 
 from __future__ import annotations
 
-from ytdl.services.analysis.cut_planner import plan_cuts
+import random
 
+from ytdl.services.analysis.cut_planner import plan_cuts
+from ytdl.services.analysis.profiles import ContentProfile, get_profile
+
+# 16 quarter-note beats at 1s apart, a Verse then a Build-up.
 CP = {
-    "beats": [{"timestamp_sec": float(t)} for t in range(8)],
-    "bars": [{"timestamp_sec": 0.0}, {"timestamp_sec": 4.0}],
-    "phrases": [{"timestamp_sec": 0.0}],
+    "beats": [{"timestamp_sec": float(t)} for t in range(16)],
     "sections": [
-        {"start_sec": 0.0, "end_sec": 4.0, "label": "Verse"},
-        {"start_sec": 4.0, "end_sec": 8.0, "label": "Chorus"},
+        {"start_sec": 0.0, "end_sec": 8.0, "label": "Verse"},
+        {"start_sec": 8.0, "end_sec": 16.0, "label": "Build-up"},
     ],
 }
+PROF = ContentProfile(("fade", "pulse"), "test", hold_beats=4, unique_hold_beats=1)
 
 
-def test_auto_is_section_driven() -> None:
-    plan = plan_cuts(CP, mode="auto", section_rules={"Verse": "bar", "Chorus": "beat"},
-                     fill_on_phrase_end=False)
-    by_time = {c["timestamp_sec"]: c for c in plan}
-    assert by_time[0.0]["tier"] == "bar"  # Verse -> bar
-    assert by_time[4.0]["tier"] == "beat" and by_time[5.0]["tier"] == "beat"  # Chorus -> beat
-    assert by_time[4.0]["section"] == "Chorus"  # carries the section for transition fitting
+def test_standard_holds_full_bar_not_every_beat() -> None:
+    cuts = plan_cuts(CP, PROF, mood="groovy", rng=random.Random(0))
+    verse = [c for c in cuts if c["section"] == "Verse"]
+    # Verse holds 4 beats -> cuts at 0,4 (NOT every beat). hold_beats recorded as 4.
+    assert [c["timestamp_sec"] for c in verse] == [0.0, 4.0]
+    assert all(c["hold_beats"] == 4 and not c["unique"] for c in verse)
 
 
-def test_fixed_mode_uses_one_tier() -> None:
-    plan = plan_cuts(CP, mode="beat")
-    assert len(plan) == 8
-    assert all(c["tier"] == "beat" for c in plan)
+def test_unique_mode_is_beat_by_beat_only_at_high_impact() -> None:
+    cuts = plan_cuts(CP, PROF, mood="groovy", rng=random.Random(0))
+    build = [c for c in cuts if c["section"] == "Build-up"]
+    # Build-up = Unique Mode -> every beat (8..15), hold 1, flagged unique.
+    assert [c["timestamp_sec"] for c in build] == [float(t) for t in range(8, 16)]
+    assert all(c["hold_beats"] == 1 and c["unique"] for c in build)
 
 
-def test_phrase_end_fills_add_quick_beats() -> None:
-    cp = {**CP, "phrases": [{"timestamp_sec": 4.0}]}
-    plan = plan_cuts(cp, mode="auto", section_rules={"Verse": "bar", "Chorus": "beat"},
-                     fill_on_phrase_end=True, n_fill=2)
-    fills = {c["timestamp_sec"] for c in plan if c["section"] == "fill"}
-    assert {2.0, 3.0} <= fills  # the 2 beats before the phrase boundary
+def test_transition_is_pulled_from_profile_pool() -> None:
+    cuts = plan_cuts(CP, PROF, rng=random.Random(1))
+    assert cuts and all(c["transition"] in PROF.transitions for c in cuts)
 
 
-def test_empty_returns_empty() -> None:
-    assert plan_cuts({}, mode="auto") == []
+def test_fixed_mode_overrides_to_constant_grid() -> None:
+    half = plan_cuts(CP, PROF, mode="half", rng=random.Random(0))
+    # mode=half -> hold 2 beats everywhere (0,2,4,...).
+    assert [c["timestamp_sec"] for c in half][:3] == [0.0, 2.0, 4.0]
+    assert all(c["hold_beats"] == 2 for c in half)
+
+
+def test_profile_without_unique_never_goes_beat_by_beat() -> None:
+    gentle = ContentProfile(("fade",), "gentle", hold_beats=4, unique_hold_beats=None)
+    cuts = plan_cuts(CP, gentle, mood="groovy", rng=random.Random(0))
+    assert all(c["hold_beats"] >= 2 and not c["unique"] for c in cuts)  # never 1
+
+
+def test_first_cut_anchored_at_zero() -> None:
+    cp = {"beats": [{"timestamp_sec": 1.5}, {"timestamp_sec": 2.0}],
+          "sections": [{"start_sec": 0.0, "end_sec": 3.0, "label": "Verse"}]}
+    cuts = plan_cuts(cp, get_profile("video_art"), rng=random.Random(0))
+    assert cuts[0]["timestamp_sec"] == 0.0  # concat-safe coverage from the start
+
+
+def test_empty_beats_returns_empty() -> None:
+    assert plan_cuts({}, PROF) == []
