@@ -1,24 +1,24 @@
 {
-  "version": "1.03",
+  "version": "1.04",
   "rate_limits": {
     "services": {
       "youtube": {
-        "requests_per_minute": 10,
-        "requests_per_hour": 200,
-        "requests_per_day": 1000,
-        "requests_per_month": 10000,
+        "requests_per_minute": 60,
+        "requests_per_hour": 2000,
+        "requests_per_day": 10000,
+        "requests_per_month": 100000,
         "concurrent_max": 1,
-        "burst_size": 5,
+        "burst_size": 30,
         "burst_window_seconds": 10,
-        "retry_after_seconds": 30,
+        "retry_after_seconds": 15,
         "max_retries": 3,
         "download": {
-          "limit_rate": "5M",
+          "limit_rate": null,
           "throttled_rate": "100K",
-          "sleep_requests_seconds": 1.0,
-          "sleep_interval_seconds": 3.0,
-          "max_sleep_interval_seconds": 8.0,
-          "concurrent_fragments": 1,
+          "sleep_requests_seconds": 0,
+          "sleep_interval_seconds": 0,
+          "max_sleep_interval_seconds": 0,
+          "concurrent_fragments": 4,
           "retries": 10,
           "fragment_retries": 10
         }

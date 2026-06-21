@@ -37,8 +37,8 @@ def test_render_block_defaults() -> None:
     assert cfg.get("render.container") == "mp4"
 
 
-def test_rate_limits_version_1_03() -> None:
+def test_rate_limits_version_current() -> None:
     cfg = ConfigManager(file_name="rate_limits.json", config_dir=_REPO_CONFIG)
 
     cfg.validate_config_version()
-    assert cfg.version == "1.03"
+    assert cfg.version == "1.04"

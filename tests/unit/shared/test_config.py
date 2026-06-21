@@ -93,7 +93,7 @@ def test_real_rate_limits_config_loads_and_validates() -> None:
     cfg = ConfigManager(file_name="rate_limits.json", config_dir=repo_config)
 
     cfg.validate_config_version()
-    assert cfg.get("rate_limits.services.youtube.requests_per_minute") == 10
-    assert cfg.get("rate_limits.services.youtube.requests_per_day") == 1000
-    assert cfg.get("rate_limits.services.youtube.download.limit_rate") == "5M"
+    assert cfg.get("rate_limits.services.youtube.requests_per_minute") == 60
+    assert cfg.get("rate_limits.services.youtube.requests_per_day") == 10000
+    assert cfg.get("rate_limits.services.youtube.download.limit_rate") is None
     assert cfg.get("queue.overflow_strategy") == "reject_oldest"
