@@ -65,3 +65,9 @@ def test_loader_parses_sync_target_and_mode() -> None:
     assert meta.sync_enabled() is True
     assert meta.sync_mode() == "auto" and meta.sync_target() == "lecture"
     assert _build_metadata({}).sync_target() == ""
+
+
+def test_loader_parses_sync_crossfade() -> None:
+    meta = _build_metadata({"sync": {"enabled": True, "crossfade": 0.5}})
+    assert meta.sync_crossfade() == 0.5
+    assert _build_metadata({}).sync_crossfade() == 0.0  # default = clean cuts

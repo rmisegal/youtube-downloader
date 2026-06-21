@@ -80,6 +80,7 @@ class Option1Engine:
         leading_path: str | None = None,
         leading_kind: str = "none",
         timeline: bool = False,
+        dissolve: float = 0.0,
     ) -> None:
         """Prep each clip's sample to a small ``.ts`` ONE AT A TIME, then stitch.
 
@@ -101,4 +102,5 @@ class Option1Engine:
             leading_path=leading_path,
             leading_kind=leading_kind,
             timeline=timeline,
+            dissolve=dissolve,
         )

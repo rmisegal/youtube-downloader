@@ -74,6 +74,7 @@ class PlaylistRunner:
         playlist = load_playlist(yaml_path, downloader=self._downloader)
         segments = build_segments(playlist, downloader=self._downloader)
         segments = apply_sync(playlist, segments, self._config)  # music-sync pre-pass
+        self._dissolve = playlist.sync_crossfade() if playlist.sync_enabled() else 0.0
         meta = playlist.metadata
         # Honest mix gate: subtitle off => drop per-member subtitle requests.
         if not gate_subtitle(meta.active_mix_streams()):
@@ -88,8 +89,7 @@ class PlaylistRunner:
         }
         if OUTPUT_SAVE in outputs:
             if timeline:
-                # Save of an absolute-timeline/image mix is a follow-up; display/stream
-                # render it live. Skip rather than mis-render via the sequential path.
+                # Save of an image/timeline mix is a follow-up; display/stream render it live.
                 _LOGGER.warning("save not yet supported for image/timeline playlists; skipping")
             else:
                 result["saved_path"] = self._save(playlist, segments)
@@ -155,11 +155,10 @@ class PlaylistRunner:
         """Render ONE mix file (timeline/leading-aware) and open it in ONE VLC."""
         self._option1.run_segments(
             segments,
-            crossfade=self._crossfade,
-            vlc_binary=self._vlc.vlc_binary(),
+            crossfade=self._crossfade, vlc_binary=self._vlc.vlc_binary(),
             leading_path=leading_file or None,
-            leading_kind=leading_kind,
-            timeline=timeline,
+            leading_kind=leading_kind, timeline=timeline,
+            dissolve=getattr(self, "_dissolve", 0.0),
         )
 
     def _stream(self, meta: Any, segments: list[Any], timeline: bool) -> None:

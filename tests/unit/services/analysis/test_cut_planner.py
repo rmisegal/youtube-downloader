@@ -51,6 +51,11 @@ def test_black_only_at_section_boundaries() -> None:
     assert cuts[0]["transition"] != "fadeblack"
 
 
+def test_no_black_mode_suppresses_fadeblack() -> None:
+    cuts = plan_cuts(CP, PROF, mood="groovy", no_black=True, rng=random.Random(0))
+    assert all(c["transition"] != "fadeblack" for c in cuts)  # crossfade mode = never dark
+
+
 def test_fixed_mode_overrides_to_constant_grid() -> None:
     half = plan_cuts(CP, PROF, mode="half", rng=random.Random(0))
     # mode=half -> hold 2 beats everywhere (0,2,4,...).

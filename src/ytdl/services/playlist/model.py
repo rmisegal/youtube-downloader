@@ -83,6 +83,7 @@ class Sync:
     enabled: bool = False
     mode: str = SYNC_AUTO
     target: str = ""
+    crossfade: float = 0.0  # >0 = crossfade MODE: soft dissolves between slides (no black)
 
 
 @dataclass(frozen=True)
@@ -108,6 +109,10 @@ class Metadata:
     def sync_target(self) -> str:
         """The content-target profile name (empty = the configured default)."""
         return self.sync.target
+
+    def sync_crossfade(self) -> float:
+        """Crossfade-mode dissolve seconds (0 = clean cuts)."""
+        return self.sync.crossfade
 
     def active_outputs(self) -> list[str]:
         """Enabled output modes, ordered as :data:`OUTPUT_MODES`."""
@@ -171,3 +176,7 @@ class Playlist:
     def sync_target(self) -> str:
         """Delegate to :meth:`Metadata.sync_target`."""
         return self.metadata.sync_target()
+
+    def sync_crossfade(self) -> float:
+        """Delegate to :meth:`Metadata.sync_crossfade`."""
+        return self.metadata.sync_crossfade()

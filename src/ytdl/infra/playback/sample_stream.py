@@ -21,6 +21,7 @@ from ytdl.infra.playback.concat import build_concat_command, is_contiguous
 from ytdl.infra.playback.renderer import MixRenderer
 from ytdl.infra.playback.stream_server import DEFAULT_VLC_BINARY
 from ytdl.infra.playback.timeline import build_timeline_command, timeline_total
+from ytdl.infra.playback.xfade import build_xfade_command
 from ytdl.services.mixer.sample_prep import SamplePrep
 from ytdl.services.mixer.segment import MixSegment
 
@@ -72,21 +73,29 @@ def _render_command(
     leading_kind: str,
     timeline: bool,
     tmp_dir: str,
+    dissolve: float = 0.0,
 ) -> list[str]:
-    """Pick the render command: concat (contiguous), overlay, leading-track, or xfade."""
+    """Pick the render command: crossfade/concat (contiguous), overlay, leading, or xfade."""
     if timeline:
         total = timeline_total(prepared)
         lead = leading_path
         if leading_path and leading_kind == LEADING_AUDIO:
             lead = renderer.looped_leading(leading_path, total, crossfade, tmp_dir)
-        # Contiguous slots (music-sync) -> fast concat (video stream-copied); only an
-        # OVERLAPPING manual timeline needs the heavier N-input overlay compositor.
         if is_contiguous(prepared):
+            # Crossfade mode -> soft cross-dissolves (slower re-encode, no black);
+            # otherwise fast concat (video stream-copied, clean cuts).
+            if dissolve > 0 and len(prepared) > 1:
+                return build_xfade_command(
+                    renderer, prepared, total=total, leading_path=lead,
+                    leading_kind=leading_kind, dissolve=dissolve, crossfade=crossfade,
+                    output_path=out_file,
+                )
             return build_concat_command(
                 renderer, prepared, total=total, leading_path=lead,
                 leading_kind=leading_kind, crossfade=crossfade,
                 output_path=out_file, tmp_dir=tmp_dir,
             )
+        # An OVERLAPPING manual timeline needs the N-input overlay compositor.
         return build_timeline_command(
             renderer, prepared, total=total, leading_path=lead,
             leading_kind=leading_kind, crossfade=crossfade, output_path=out_file,
@@ -118,6 +127,7 @@ def stream_samples(
     leading_path: str | None = None,
     leading_kind: str = "none",
     timeline: bool = False,
+    dissolve: float = 0.0,
 ) -> None:
     """Prep clips to small ``.ts``, render ONE mix FILE, then open it in VLC.
 
@@ -138,7 +148,7 @@ def stream_samples(
         command = _render_command(
             renderer, prepared, out_file, crossfade=crossfade,
             leading_path=leading_path, leading_kind=leading_kind,
-            timeline=timeline, tmp_dir=tmp_dir,
+            timeline=timeline, tmp_dir=tmp_dir, dissolve=dissolve,
         )
         print("[sample] rendering the mix…", flush=True)
         with _log_handle(log_path) as log:

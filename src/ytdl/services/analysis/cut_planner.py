@@ -49,12 +49,13 @@ def _picks(sec_beats: list[float], hold: int, unique: bool) -> list[tuple[float,
 
 def plan_cuts(
     cut_points: Mapping[str, Any], profile: ContentProfile, *,
-    mood: str = "groovy", mode: str = "auto", rng: Any = _random,
+    mood: str = "groovy", mode: str = "auto", no_black: bool = False, rng: Any = _random,
 ) -> list[Cut]:
     """Return ordered cuts ``{timestamp_sec, transition, section, hold_beats, unique}``.
 
     ``mode="auto"`` is the profile/mood-driven pacing; a fixed name in
-    :data:`FIXED_HOLDS` (or ``"section"``) forces a constant grid.
+    :data:`FIXED_HOLDS` (or ``"section"``) forces a constant grid. ``no_black=True``
+    (crossfade mode) suppresses the section-change fade-to-black so nothing goes dark.
     """
     beats = [b["timestamp_sec"] for b in cut_points.get("beats", [])]
     if not beats:
@@ -75,9 +76,9 @@ def plan_cuts(
             hold, unique = hold_for(profile, sec.get("label", ""), mood)
             picks = _picks(sec_beats, hold, unique)
         for pi, (t, hold_beats, unique) in enumerate(picks):
-            # A dramatic fade-through-BLACK marks a section change (the only black);
-            # every other cut is a clean, no-black transition from the profile pool.
-            boundary = si > 0 and pi == 0
+            # A dramatic fade-through-BLACK marks a section change (the only black) —
+            # unless crossfade mode (no_black) asked for a fully smooth, never-dark mix.
+            boundary = si > 0 and pi == 0 and not no_black
             cuts.append({
                 "timestamp_sec": round(float(t), 3),
                 "transition": TRANSITION_FADEBLACK if boundary else rng.choice(profile.transitions),

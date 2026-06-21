@@ -458,6 +458,13 @@ fade-**through-black** is a dedicated `fadeblack` transition the planner inserts
 (Intro→Verse→Chorus→…) — a deliberate, dramatic punctuation that therefore appears just a handful of times per
 song, at musically meaningful "surprise" moments, not between every slide.
 
+**Crossfade mode (soft dissolves).** By default slides change with a clean **cut** (rendered via fast
+stream-copy concat). Set `sync.crossfade: <seconds>` (e.g. `0.5`) to switch to **crossfade mode**: every slide
+**cross-dissolves** into the next — a soft blend with **no black**. Each clip is padded with its frozen last
+frame (`tpad`) so the dissolve does **not** shrink the timeline or break beat alignment. This **re-encodes** the
+video (an `xfade` chain) rather than stream-copying, so it is **noticeably slower** to render — the documented
+trade-off for soft transitions. Use clean cuts (`crossfade: 0`) for speed, crossfade for smoothness.
+
 **Placement / overlap.** Members carry an absolute timeline position (`at` … `until`). A later member overlays
 an earlier one (so an image can sit on top of a running video). When slots are **contiguous** (the sync case)
 the renderer **concatenates** the clips (video stream-copied — fast at any count); only **overlapping** manual
@@ -490,6 +497,8 @@ metadata:
     target: video_art         #   content profile: video_art | dj_party | homemade | presentation |
                               #   podcast | road_travel | topic_summary | lecture. Drives transitions + pacing.
     mode: auto                #   pacing grid: auto (profile/mood) | beat | half | bar | phrase | section.
+    crossfade: 0.5            #   CROSSFADE MODE: 0 = clean cuts (fast); >0 = soft dissolve seconds
+                              #   between every slide (no black; slower re-encoding render).
   loop: true                  # repeat the show while displaying.
 members:
   - id: 1                     # REQUIRED, unique; members are ordered by id.

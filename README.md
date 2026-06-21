@@ -494,7 +494,9 @@ mood** (BPM) — creative, surprising mixes **with no runtime LLM**. Force a fix
 
 **No black between slides:** each clip fills the frame for its whole slot, so slides flow without a black gap;
 the only fade-**through-black** (`fadeblack`) is inserted **at section changes** as deliberate, dramatic
-punctuation — a few times per song, not between every slide.
+punctuation — a few times per song, not between every slide. For soft **cross-dissolves** instead of clean cuts,
+set `sync: { crossfade: 0.5 }` — every slide blends into the next (no black) via an `xfade` chain (slower,
+re-encoding render; clean-cut concat stays the fast default).
 
 > **Scale:** contiguous music-sync slots render via a **concat** path — the prepped clips are stream-**copied**
 > (no re-encode), so a full song's hundreds of cut-points render in a couple of seconds regardless of count

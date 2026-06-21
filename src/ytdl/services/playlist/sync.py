@@ -29,13 +29,13 @@ def apply_sync(playlist: Any, segments: list[Any], config: Any, *, analyzer: Any
         return segments  # sync needs an audio soundtrack to follow
     return sync_segments(
         segments, meta.leading_file(), config, mode=meta.sync_mode(),
-        target=meta.sync_target(), analyzer=analyzer,
+        target=meta.sync_target(), crossfade=meta.sync_crossfade(), analyzer=analyzer,
     )
 
 
 def sync_segments(
     segments: list[Any], leading_file: str, config: Any, *, mode: str = "auto",
-    target: str | None = None, analyzer: Any = None,
+    target: str | None = None, crossfade: float = 0.0, analyzer: Any = None,
 ) -> list[Any]:
     """Analyze the leading audio, plan cut-points from the target profile, place members."""
     get = config.get if config is not None else (lambda _k, default=None: default)
@@ -44,7 +44,9 @@ def sync_segments(
     bpm = result["metadata"]["global_bpm"]
     total = result["metadata"]["duration_seconds"]
     profile = get_profile(target or get("analysis.default_target", DEFAULT_TARGET))
-    cuts = plan_cuts(result["cut_points"], profile, mood=mood_from_bpm(bpm), mode=mode)
+    # Crossfade mode dissolves every junction, so suppress the section-change black.
+    cuts = plan_cuts(result["cut_points"], profile, mood=mood_from_bpm(bpm),
+                     mode=mode, no_black=crossfade > 0)
     return place_on_cuts(segments, cuts, total, bpm)
 
 
