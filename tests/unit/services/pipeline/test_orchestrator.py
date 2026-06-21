@@ -85,6 +85,16 @@ def test_pipeline_resumes_completed_structure(tmp_path) -> None:
     assert ("analyze", "song.mp3") not in sdk.calls  # structure.json present → not re-analyzed
 
 
+def test_pipeline_plan_runs_structure_only(tmp_path) -> None:
+    cfg = MovieConfig(topic="space", leading="song.mp3", scene_target=3, output_dir=str(tmp_path))
+    sdk = _FakeSDK()
+    result = MoviePipeline(sdk, cfg).plan()
+    assert len(result["scenes"]) == 3
+    assert Path(result["structure_path"]).exists()
+    assert not Path(result["script_path"]).exists()  # planning stops before SCRIPT
+    assert not any(c[0] == "play" for c in sdk.calls)  # and before MATCH/RENDER
+
+
 def test_pipeline_no_leading_skips_analyze(tmp_path) -> None:
     cfg = MovieConfig(topic="x", leading="", scene_target=4, output_dir=str(tmp_path))
     sdk = _FakeSDK()

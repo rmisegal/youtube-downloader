@@ -11,11 +11,26 @@ from __future__ import annotations
 import logging
 
 from ytdl.cli.exits import EXIT_GENERIC_ERROR, EXIT_SUCCESS, EXIT_USAGE
+from ytdl.cli.movie_run import run_build_movie, run_fetch_movie, run_search
 from ytdl.cli.run import _fail
 from ytdl.sdk.sdk import YoutubeDownloaderSDK
 from ytdl.services.pipeline.config import MovieConfig
 
 _LOGGER = logging.getLogger("ytdl.cli")
+
+
+def dispatch_movie(args) -> int | None:  # noqa: ANN001 - argparse.Namespace
+    """Route a movie-agent / pipeline flag to its handler; ``None`` if none matched."""
+    handlers = [
+        ("search", run_search), ("fetch_movie", run_fetch_movie),
+        ("to_segments", run_to_segments), ("movie_wizard", run_movie_wizard),
+        ("plan_movie", run_plan_movie), ("make_movie", run_make_movie),
+        ("build_movie", run_build_movie),
+    ]
+    for attr, handler in handlers:
+        if getattr(args, attr, None):
+            return handler(args)
+    return None
 
 
 def _apply_overrides(cfg: MovieConfig, args) -> MovieConfig:  # noqa: ANN001 - argparse.Namespace
@@ -41,6 +56,23 @@ def run_movie_wizard(args) -> int:  # noqa: ANN001 - argparse.Namespace
         return _fail("Wizard failed", exc, EXIT_GENERIC_ERROR)
     print(f"Saved config -> {path}")
     print(f'Run it: --make-movie --config "{path}"')
+    return EXIT_SUCCESS
+
+
+def run_plan_movie(args) -> int:  # noqa: ANN001 - argparse.Namespace
+    """Run only STRUCTURE so the agent can author script.json before --make-movie."""
+    if not args.config:
+        return _fail("--plan-movie needs --config <config.json>", ValueError("run --movie-wizard first"),
+                     EXIT_USAGE)
+    try:
+        cfg = _apply_overrides(MovieConfig.load(args.config), args)
+        result = YoutubeDownloaderSDK().plan_movie(cfg)
+    except (OSError, ValueError) as exc:
+        return _fail("Could not plan the movie", exc, EXIT_USAGE)
+    except Exception as exc:  # noqa: BLE001 - top-level CLI boundary
+        return _fail("Movie planning failed", exc, EXIT_GENERIC_ERROR)
+    print(f"Planned {len(result['scenes'])} scenes -> {result['structure_path']}")
+    print(f"Author the script at {result['script_path']} (movie-script-writer), then --make-movie")
     return EXIT_SUCCESS
 
 

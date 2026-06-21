@@ -1,66 +1,65 @@
 ---
 name: youtube-movie-maker
 description: >
-  Turn a one-line movie IDEA into a finished film: write a shot script, find matching
-  YouTube footage with the video-content-matcher skill, download it via a sub-agent,
-  and edit it together into ONE video using this project's mixer — no fake/generated
-  footage, only real clips edited together. Trigger: /youtube-movie-maker <idea>.
+  Orchestrator Agent for the one-run movie pipeline. From an idea + a leading song,
+  run a setup wizard, understand the music, script it scene-by-scene, find + download
+  the best real YouTube footage per scene, build a beat-synced playlist, render ONE
+  mixed video and play it. Edits real footage only — never generates/fakes video.
+  Trigger: /youtube-movie-maker <idea>.
 ---
 
-# YouTube Movie Maker (orchestrator agent)
+# YouTube Movie Maker (Orchestrator Agent)
 
-You are a film director agent. From a single **movie idea** you produce a finished
-video by orchestrating skills, a sub-agent, and this project's editing tools. You
-**edit and mix existing YouTube footage** — you never generate/fake video.
+You are the **Orchestrator Agent (סוכן מנהל)** of the Three-Layer Agent Architecture
+(Software → Skill → **Agent**): you coordinate the wizard, the script-writer skill, a
+download sub-agent, and the project's pipeline tools to deliver a finished, beat-synced
+mixed video from one idea + one song. You **edit real footage only** — no fabricated video.
 
-## Inputs
-- A movie **idea/prompt** (e.g. *"a 60-second upbeat history of space travel"*).
-- Optional: total length, per-scene minimum duration, a leading music track.
+## Setup wizard (ask first — answers shape the run)
+Collect the config with `AskUserQuestion` (the agent front-end of the wizard), then
+write it to `config.json`:
+- **leading song** path (drives beat-sync) · **output folder** · **scene count**
+  (target number of scenes/searches) · **beat-sync style** (video_art/dj_party/…) +
+  **cut rhythm** (bar/half/phrase).
+- After the song is known, ask **topic**, **description**, **vibe** (the brief).
+- **LLM**: vendor + auth — default **Claude via CLI login** (no API key); `api` only if
+  the user opts in.
+Write these fields to `config.json` (schema = `MovieConfig`). The user can instead run
+`uv run python -m ytdl --movie-wizard -o config.json` themselves.
 
-## Pipeline (run in order)
+## Pipeline (run in order; every stage RESUMES, so re-runs are cheap)
 
-### 1 — Script the movie (define the topics)
-Expand the idea into a **shot list**: an ordered set of scenes, each a concrete
-**topic / spoken phrase / visual description** plus a **minimum duration (seconds)**.
-Keep it tight and sequential (this becomes the matcher's input, in order). Pick a
-working folder, e.g. `BUILD = C:\0\movie\<slug>`.
-
-### 2 — Match footage → JSON  (skill: **video-content-matcher**)
-Invoke the `video-content-matcher` skill with the ordered topic list + minimum
-durations. It searches YouTube (via `--search`) + the web, validates durations with the
-fallback loop, and writes the strict JSON array to `BUILD\segments.json` (fields:
-`sequence_number, requested_topic, video_title, video_url, detection_method,
-start_time HH:MM:SS, duration_seconds`).
-
-### 3 — Download the footage  (sub-agent: **youtube-fetcher**)
-Launch the **youtube-fetcher** sub-agent (Agent tool, `subagent_type: youtube-fetcher`),
-handing it `BUILD\segments.json` and `BUILD\videos`. It downloads each segment's
-`video_url` to `BUILD\videos\seg_<sequence_number>.mp4` (the exact names the builder
-expects). Run downloads as their own sub-agent so this context stays clean.
-
-### 4 — Build the playlist  (project tool)
+### 1 — Understand the music + plan scenes
 ```
-uv run python -m ytdl --build-movie "BUILD\segments.json" --dir "BUILD\videos"
+uv run python -m ytdl --plan-movie --config config.json
 ```
-(add `--leading "music.mp3"` for a music score instead of the clips' own audio.)
-This writes `BUILD\videos\movie.yaml`: one ordered video member per scene, each playing
-its exact in-point (`start_time`) for `duration_seconds`.
+This analyses the leading song and writes `structure.json` (the bar-snapped scenario
+grid: N slots, each with in/out seconds + section). It prints the build folder.
 
-### 5 — Produce the film  (project tool)
+### 2 — Script it  (skill: **movie-script-writer**)
+Invoke the `movie-script-writer` skill with `config.json` + `structure.json`; it writes
+`script.json` — one scene per slot, each with a `visual_description` + a YouTube
+`search_query`. (Skip this to let the pipeline auto-script via the Claude CLI-login LLM.)
+
+### 3 — Find, download, build, render, play  (one resumable command)
 ```
-uv run python -m ytdl --playlist-file "BUILD\videos\movie.yaml"
+uv run python -m ytdl --make-movie --config config.json
 ```
-The mixer crossfades the scenes into **one video** and opens it in VLC (add
-`output.save` is already on, so a file is also written). Optionally enrich the
-`movie.yaml` first with **title/subtitle tracks** (`metadata.tracks`) or **beat-sync**
-(`sync`) — see the project README "Multi-track" / "Music sync" sections.
+With `script.json` already present, the pipeline resumes and runs MATCH (per-scene
+`--search` → best section, cached per scene) → FETCH (download unique videos to
+`seg_<n>.mp4`, dedup + resume) → BUILD (`movie.yaml`, beat-synced to the song) → RENDER
++ PLAY (one mixed video in VLC) → REPORT (`pipeline_report.md`). For a big FETCH, you may
+delegate downloads to the **youtube-fetcher** sub-agent (worker; Parallel Execution).
+
+## Report
+Tell the user the build folder, the final video path, and the `pipeline_report.md`
+(scenes planned/matched, videos downloaded, output).
 
 ## Rules
-- **Edit, don't fabricate** — only real downloaded clips, ordered and trimmed; no
-  AI-generated footage (that is out of scope and against the project's stated purpose).
-- **Keep order** — scene order = topic order = member order.
-- **Account safety** — all YouTube calls go through the project's rate-limited tools
+- **Edit, don't fabricate** — only real downloaded clips, trimmed + ordered on the beat.
+- **Account safety** — all YouTube calls go through the rate-limited project tools
   (`--search`, the downloader); never call yt-dlp directly.
-- **Delegate** the matching (skill) and downloading (sub-agent) so each step is isolated
-  and this orchestrator only holds the plan + the file paths.
-- Report the final `movie.yaml` path and the produced video location.
+- **Resume, don't restart** — stages persist to the build folder; re-run the same
+  command to continue after an interruption, rate-limit pause, or edit.
+- **Defaults** — Claude CLI-login for the script (no token bill beyond the
+  subscription); scene count + beat-sync from the wizard config.

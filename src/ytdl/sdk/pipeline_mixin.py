@@ -26,6 +26,10 @@ class PipelineMixin:
         """Load a ``config.json`` and run the full pipeline; return its result."""
         return self.make_movie(MovieConfig.load(config_path), provider=provider)
 
+    def plan_movie(self, config: MovieConfig) -> dict[str, Any]:
+        """Run only STRUCTURE → write ``structure.json`` (lets the agent author the script)."""
+        return MoviePipeline(self, config).plan()
+
     def movie_wizard(self, config_path: str, *, prompter: Prompter | None = None) -> str:
         """Run the interactive setup wizard and save the config; return its path."""
         wizard = MovieWizard(prompter or Prompter(), analyze_fn=self._wizard_song_summary)

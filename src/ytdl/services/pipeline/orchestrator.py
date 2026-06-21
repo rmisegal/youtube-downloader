@@ -86,6 +86,15 @@ class MoviePipeline:
             out_path=str(videos / "movie.yaml"),
         )
 
+    def plan(self) -> dict[str, Any]:
+        """Run only STRUCTURE (song → scenario grid) so the agent can author the script."""
+        build = self._build_dir()
+        build.mkdir(parents=True, exist_ok=True)
+        grid = self._structure(build, StageState(str(build)))
+        return {"build_dir": str(build), "scenes": grid,
+                "structure_path": str(build / "structure.json"),
+                "script_path": str(build / "script.json")}
+
     def run(self) -> dict[str, Any]:
         """Execute every stage in order (resuming finished ones); return a result dict."""
         build = self._build_dir()
