@@ -12,7 +12,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-DownloadFn = Callable[[str, str], Any]  # (url, dest_basename) → writes <dest_basename>.mp4
+DownloadFn = Callable[[str, str, dict[str, Any]], Any]  # (url, dest_basename, segment)
 
 
 def fetch_segments(
@@ -38,7 +38,7 @@ def fetch_segments(
             continue
         print(f"[fetch {len(done) + len(failed) + 1}/{len(segments)}] seg_{n}: {url}", flush=True)
         try:
-            download_fn(url, f"seg_{n}")
+            download_fn(url, f"seg_{n}", seg)
             if dest.exists():
                 by_url[url] = dest
             done.append(n)

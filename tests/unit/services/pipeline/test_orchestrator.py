@@ -18,7 +18,7 @@ def test_fetch_dedupes_same_url(tmp_path) -> None:
     ]
     downloaded = []
 
-    def download(url, name):  # noqa: ANN001 - writes <name>.mp4
+    def download(url, name, seg=None):  # noqa: ANN001 - writes <name>.mp4
         downloaded.append(url)
         (tmp_path / f"{name}.mp4").write_text("v", encoding="utf-8")
 
@@ -43,6 +43,7 @@ class _FakeSDK:
         return [{"video_url": f"u-{query}", "video_title": "T", "duration_seconds": 60}]
 
     def download(self, url, **kw):  # noqa: ANN001, ANN003
+        self.calls.append(("download", url, kw.get("sections")))
         out = Path(kw["output_dir"]) / f"{kw['name']}.mp4"
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text("v", encoding="utf-8")
@@ -74,6 +75,9 @@ def test_pipeline_runs_all_stages(tmp_path) -> None:
     assert result["scenes"] == 3 and result["matched"] == 3 and result["downloaded"] == 3
     assert result["output"] == "final.mp4"
     assert ("analyze", "song.mp3") in sdk.calls  # leading song → STRUCTURE analyzed it
+    # footage is fetched as a bounded section (in-point window), not the whole video
+    assert any(c[0] == "download" and c[2] is not None for c in sdk.calls)
+    assert (build / "build_segments.json").exists()  # build uses in-point 0 clips
 
 
 def test_pipeline_resumes_completed_structure(tmp_path) -> None:

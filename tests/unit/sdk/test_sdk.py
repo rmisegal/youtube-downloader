@@ -66,6 +66,19 @@ def test_audio_only(sdk, mock_client, tmp_path):
     assert "format" not in opts
 
 
+def test_sections_fetch_only_a_window(sdk, mock_client, tmp_path):
+    sdk.download("u", output_dir=str(tmp_path / "out"), sections=(10.0, 50.0))
+    opts = _opts(mock_client)
+    assert opts["force_keyframes_at_cuts"] is True
+    # download_ranges is a yt-dlp callable → returns the one [start, end] window
+    assert opts["download_ranges"](None, None) == [{"start_time": 10.0, "end_time": 50.0}]
+
+
+def test_no_sections_means_full_download(sdk, mock_client, tmp_path):
+    sdk.download("u", output_dir=str(tmp_path / "out"))
+    assert "download_ranges" not in _opts(mock_client)
+
+
 def test_subs_only(sdk, mock_client, tmp_path):
     sdk.download("u", subs=True, output_dir=str(tmp_path / "out"))
     opts = _opts(mock_client)

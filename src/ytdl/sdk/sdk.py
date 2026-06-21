@@ -72,30 +72,18 @@ class YoutubeDownloaderSDK(MovieMixin, PipelineMixin):
         sub_lang: str | None = None,
         no_playlist: bool = False,
         playlist_items: str | None = None,
+        sections: tuple[float, float] | None = None,
     ) -> dict[str, Any]:
-        """Download any combination of modes in a single fetch-once pass.
+        """Download any combination of modes in one fetch-once pass (PRD §3.1).
 
-        Defaults to video-only when no mode flag is truthy (PRD §3.1). ``no_playlist``
-        restricts a list URL to the single video; ``playlist_items`` (e.g. "1,3,5")
-        selects specific entries. Returns a small dict describing what was produced.
+        ``no_playlist`` limits a list URL to one video; ``playlist_items`` selects
+        entries; ``sections`` (start, end) fetches only that window (movie pipeline).
         """
         return _run_download(
-            self._client,
-            self._base,
-            self._video,
-            self._audio,
-            self._subs,
-            self._config,
-            url=url,
-            video=video,
-            audio=audio,
-            subs=subs,
-            output_dir=output_dir,
-            name=name,
-            resolution=resolution,
-            sub_lang=sub_lang,
-            no_playlist=no_playlist,
-            playlist_items=playlist_items,
+            self._client, self._base, self._video, self._audio, self._subs, self._config,
+            url=url, video=video, audio=audio, subs=subs, output_dir=output_dir, name=name,
+            resolution=resolution, sub_lang=sub_lang, no_playlist=no_playlist,
+            playlist_items=playlist_items, sections=sections,
         )
 
     def mix_local_directory(

@@ -25,6 +25,17 @@ _SUB_LANG_KEY = "defaults.sub_lang"
 _DEFAULT_OUTPUT_DIR = "./downloads"
 
 
+def _section_ranges(start: float, end: float) -> Any:
+    """A yt-dlp ``download_ranges`` callable selecting one ``[start, end]`` window.
+
+    Plain closure (no ``yt_dlp`` import here) — lets the movie pipeline fetch only the
+    seconds it needs instead of a whole hours-long source video.
+    """
+    def ranges(_info: Any, _ydl: Any) -> list[dict[str, float]]:
+        return [{"start_time": start, "end_time": end}]
+    return ranges
+
+
 def run_download(
     client: YtDlpClient,
     base: BaseDownloader,
@@ -43,6 +54,7 @@ def run_download(
     sub_lang: str | None,
     no_playlist: bool,
     playlist_items: str | None,
+    sections: tuple[float, float] | None = None,
 ) -> dict[str, Any]:
     """Resolve defaults, compose merged opts, run one fetch, return a result dict.
 
@@ -71,6 +83,9 @@ def run_download(
         merged["noplaylist"] = True
     if playlist_items:
         merged["playlist_items"] = playlist_items
+    if sections:  # fetch only the needed window (movie pipeline) — not the whole video
+        merged["download_ranges"] = _section_ranges(*sections)
+        merged["force_keyframes_at_cuts"] = True
     client.download(url, merged)
 
     modes = [

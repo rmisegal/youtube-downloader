@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from ytdl.services.llm.factory import build_provider
+from ytdl.services.movie.builder import to_seconds
 from ytdl.services.pipeline.fetch_stage import fetch_segments
 from ytdl.services.pipeline.match_stage import match_scenes
 from ytdl.services.pipeline.report import write_report
@@ -74,14 +75,21 @@ class MoviePipeline:
         return segments
 
     def _fetch(self, videos: Path, segments: list[dict[str, Any]]) -> tuple[list[int], list[int]]:
-        def download(url: str, name: str) -> Any:
+        def download(url: str, name: str, seg: dict[str, Any]) -> Any:
+            start = to_seconds(seg.get("start_time", 0))
+            dur = float(seg.get("duration_seconds", 6) or 6)
             return self._sdk.download(url, video=True, output_dir=str(videos), name=name,
-                                      no_playlist=True, resolution=self._cfg.download_resolution)
+                                      no_playlist=True, resolution=self._cfg.download_resolution,
+                                      sections=(start, start + dur + 1.0))
         return fetch_segments(download, segments, str(videos))
 
-    def _build_playlist(self, build: Path, videos: Path) -> str:
+    def _build_playlist(self, build: Path, videos: Path, segments: list[dict[str, Any]]) -> str:
+        # Clips were fetched as their in-point window → the file starts at 0, so build
+        # from start 0 (not the original source timestamp).
+        trimmed = [{**s, "start_time": "00:00:00"} for s in segments]
+        _write(build / "build_segments.json", trimmed)
         return self._sdk.build_movie(
-            str(build / "segments.json"), str(videos),
+            str(build / "build_segments.json"), str(videos),
             leading_audio=self._cfg.leading or None,
             sync_target=self._cfg.sync_target if self._cfg.has_leading else None,
             out_path=str(videos / "movie.yaml"),
@@ -106,7 +114,7 @@ class MoviePipeline:
         script = self._script(build, grid)
         segments = self._match(build, script)
         done, failed = self._fetch(videos, segments)
-        movie_yaml = self._build_playlist(build, videos)
+        movie_yaml = self._build_playlist(build, videos, segments)
         render = self._sdk.play_playlist(movie_yaml)
         output = render.get("output_file") or render.get("saved") or movie_yaml
         stats = {"scenes": len(grid), "matched": len(segments), "downloaded": len(done),
