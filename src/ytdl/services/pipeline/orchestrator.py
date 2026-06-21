@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -22,8 +23,9 @@ from ytdl.services.pipeline.report import write_report
 from ytdl.services.pipeline.script_stage import generate_script
 from ytdl.services.pipeline.state import StageState
 from ytdl.services.pipeline.structure import build_scenario_grid, grid_from_cuts
+from ytdl.services.pipeline.throttle import retry_on_rate_limit
 
-_SEARCH_RESULTS = 6
+_SEARCH_RESULTS = 8
 
 
 def _write(path: Path, obj: Any) -> None:
@@ -34,10 +36,12 @@ def _write(path: Path, obj: Any) -> None:
 class MoviePipeline:
     """Run the full idea+song → mixed-video pipeline for one ``MovieConfig``."""
 
-    def __init__(self, sdk: Any, config: Any, *, provider: Any = None) -> None:
+    def __init__(self, sdk: Any, config: Any, *, provider: Any = None,
+                 sleep_fn: Any = time.sleep) -> None:
         self._sdk = sdk
         self._cfg = config
         self._provider = provider
+        self._sleep = sleep_fn
 
     def _build_dir(self) -> Path:
         slug = re.sub(r"\W+", "-", (self._cfg.topic or self._cfg.idea or "movie")).strip("-").lower()
@@ -72,9 +76,9 @@ class MoviePipeline:
         return script
 
     def _match(self, build: Path, script: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        segments = match_scenes(
-            lambda q, n: self._sdk.search(q, results=n), script, str(build), results=_SEARCH_RESULTS,
-        )
+        def search(query: str, n: int) -> list[dict[str, Any]]:  # waits out the rate cap
+            return retry_on_rate_limit(lambda: self._sdk.search(query, results=n), sleep_fn=self._sleep)
+        segments = match_scenes(search, script, str(build), results=_SEARCH_RESULTS)
         _write(build / "segments.json", segments)
         return segments
 
@@ -82,9 +86,11 @@ class MoviePipeline:
         def download(url: str, name: str, seg: dict[str, Any]) -> Any:
             start = to_seconds(seg.get("start_time", 0))
             dur = float(seg.get("duration_seconds", 6) or 6)
-            return self._sdk.download(url, video=True, output_dir=str(videos), name=name,
-                                      no_playlist=True, resolution=self._cfg.download_resolution,
-                                      sections=(start, start + dur + 1.0))
+            return retry_on_rate_limit(
+                lambda: self._sdk.download(url, video=True, output_dir=str(videos), name=name,
+                                           no_playlist=True, resolution=self._cfg.download_resolution,
+                                           sections=(start, start + dur + 1.0)),
+                sleep_fn=self._sleep)
         return fetch_segments(download, segments, str(videos))
 
     def _build_playlist(self, build: Path, videos: Path, segments: list[dict[str, Any]]) -> str:
